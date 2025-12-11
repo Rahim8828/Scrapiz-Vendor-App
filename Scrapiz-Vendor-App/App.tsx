@@ -1,28 +1,41 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { AuthProvider, useAuth } from './hooks/useAuth';
-import LoginScreen from './components/SimpleLogin';
-import Dashboard from './components/Dashboard';
-import EarningsScreen from './components/EarningsScreen';
-import ManageScreen from './components/ManageScreen';
-import ProfileScreen from './components/ProfileScreen';
-import PersonalInfoScreen from './components/PersonalInfoScreen';
-import PaymentSettingsScreen from './components/PaymentSettingsScreen';
-import NotificationsScreen from './components/NotificationsScreen';
-import HelpSupportScreen from './components/HelpSupportScreen';
-import AboutScreen from './components/AboutScreen';
-import JobHistoryScreen from './components/JobHistoryScreen';
-import FutureRequestsScreen from './components/FutureRequestsScreen';
-import BookingDetailsScreen from './components/BookingDetailsScreen';
-import ActiveJob from './components/ActiveJob';
-import JobCompletion from './components/JobCompletion';
-import EditProfileScreen from './components/EditProfileScreen';
-import AppSettingsScreen from './components/AppSettingsScreen';
-import ContactsScreen from './components/ContactsScreen';
-import LanguageScreen from './components/LanguageScreen';
-import BottomNavigation from './components/BottomNavigation';
-import ErrorBoundary from './components/ErrorBoundary';
-import { BookingRequest, ActiveJob as ActiveJobType } from './types';
+
+// Auth Screens
+import { SimpleLogin as LoginScreen } from './src/screens/auth';
+
+// Main Screens
+import { Dashboard, EarningsScreen, ManageScreen } from './src/screens/main';
+
+// Profile Screens
+import { ProfileScreen, PersonalInfoScreen, EditProfileScreen } from './src/screens/profile';
+
+// Settings Screens
+import { 
+  PaymentSettingsScreen, 
+  NotificationsScreen, 
+  HelpSupportScreen, 
+  AboutScreen,
+  AppSettingsScreen,
+  LanguageScreen,
+  ContactsScreen,
+  PrivacyScreen,
+  MoreMenuScreen
+} from './src/screens/settings';
+
+// Job Screens
+import { 
+  JobHistoryScreen, 
+  FutureRequestsScreen, 
+  BookingDetailsScreen, 
+  ActiveJob, 
+  JobCompletion 
+} from './src/screens/jobs';
+// Navigation & Common Components
+import { BottomNavigation } from './src/components/navigation';
+import { ErrorBoundary } from './src/components/common';
+import { BookingRequest, ActiveJob as ActiveJobType } from './src/types';
 
 const AppContent = () => {
   const { user } = useAuth();
@@ -99,6 +112,8 @@ const AppContent = () => {
         return <AboutScreen onBack={handleBackToProfile} />;
       // Manage tab sub-screens
       case 'history':
+        return <JobHistoryScreen onBack={handleBackToManage} />;
+      case 'active-jobs':
         return <JobHistoryScreen onBack={handleBackToManage} />;
       case 'future-requests':
         return <FutureRequestsScreen onBack={handleBackToManage} />;
@@ -183,6 +198,19 @@ const AppContent = () => {
           <LanguageScreen
             onBack={handleBackToProfile}
             onShowToast={showToast}
+          />
+        );
+      case 'privacy':
+        return (
+          <PrivacyScreen
+            onBack={handleBackToProfile}
+          />
+        );
+      case 'more-menu':
+        return (
+          <MoreMenuScreen
+            onBack={handleBackToProfile}
+            onNavigate={handleNavigate}
           />
         );
       default:

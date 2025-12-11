@@ -1,50 +1,63 @@
-# Welcome to your Expo app 👋
+# Scrapiz Vendor App 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile application for scrap vendors to manage bookings, track earnings, and handle customer requests efficiently.
 
-## Get started
+## Features
+
+- **Dashboard**: Real-time overview of bookings and earnings
+- **Job Management**: Accept/reject bookings, track active jobs
+- **Earnings Tracking**: View daily, weekly, and monthly earnings
+- **Profile Management**: Update personal and vehicle information
+- **Settings**: Notifications, language, and app preferences
+
+## Tech Stack
+
+- **Framework**: React Native with Expo
+- **Language**: TypeScript
+- **UI Components**: Custom themed components
+- **Navigation**: Custom navigation system
+- **Icons**: Expo Vector Icons, Lucide React
+
+## Getting Started
 
 1. Install dependencies
-
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. Start the development server
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+3. Run on device/simulator
+   - Press `a` for Android emulator
+   - Press `i` for iOS simulator
+   - Scan QR code with Expo Go app
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Project Structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+├── components/          # Reusable UI components
+│   ├── common/         # Common components (Header, Toast, etc.)
+│   ├── navigation/     # Navigation components
+│   └── ui/            # UI components (Buttons, Text, etc.)
+├── screens/            # App screens organized by feature
+│   ├── auth/          # Authentication screens
+│   ├── jobs/          # Job-related screens
+│   ├── main/          # Main app screens
+│   ├── profile/       # Profile management screens
+│   └── settings/      # Settings screens
+├── services/          # API and business logic
+├── types/            # TypeScript type definitions
+└── utils/            # Helper functions and utilities
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Available Scripts
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- `npm start` - Start Expo development server
+- `npm run android` - Run on Android
+- `npm run ios` - Run on iOS
+- `npm run lint` - Run ESLint
+- `npm run clean` - Clean node_modules and reinstall
