@@ -1,1 +1,0 @@
-# Scrapiz-Vendor-App---Test
