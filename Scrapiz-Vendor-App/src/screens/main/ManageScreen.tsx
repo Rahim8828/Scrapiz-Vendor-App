@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 80, // Reduced for compact navigation
   },
   header: {
     backgroundColor: '#1B7332',

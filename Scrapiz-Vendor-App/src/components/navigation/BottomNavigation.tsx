@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 
 interface BottomNavigationProps {
   activeTab: string;
@@ -13,6 +15,13 @@ interface BottomNavigationProps {
 }
 
 const BottomNavigation = ({ activeTab, onTabChange, jobCounts }: BottomNavigationProps) => {
+  const insets = useSafeAreaInsets();
+  
+  // Simplified and more compact safe area calculation
+  const compactBottomPadding = Platform.OS === 'android' 
+    ? Math.max(insets.bottom + 4, 12) // Minimal padding for Android
+    : Math.max(insets.bottom, 8); // iOS safe area
+  
   const tabs = [
     { key: 'home', label: 'Home', icon: 'home' },
     { 
@@ -26,7 +35,12 @@ const BottomNavigation = ({ activeTab, onTabChange, jobCounts }: BottomNavigatio
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      {
+        paddingBottom: compactBottomPadding,
+      }
+    ]}>
       <View style={styles.tabContainer}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -39,6 +53,7 @@ const BottomNavigation = ({ activeTab, onTabChange, jobCounts }: BottomNavigatio
                 styles.tab,
                 isActive && styles.activeTab
               ]}
+              activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>
                 <MaterialIcons 
@@ -82,55 +97,81 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 8,
+    zIndex: 1000,
   },
+  
   tabContainer: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    paddingBottom: 20, // Safe area for iOS
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 4,
+    minHeight: 56, // Compact height while maintaining accessibility
   },
+  
   tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+    borderRadius: 8,
+    minHeight: 44, // Compact but still accessible
   },
+  
   activeTab: {
     backgroundColor: 'rgba(27, 115, 50, 0.1)',
+    transform: [{ scale: 1.02 }],
   },
+  
   iconContainer: {
     position: 'relative',
-    marginBottom: 4,
-  },
-  badge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#dc3545',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    marginBottom: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    borderWidth: 2,
-    borderColor: 'white',
+    width: 24,
+    height: 24,
   },
+  
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#dc3545',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    borderWidth: 1.5,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  
   badgeText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: 'bold',
+    lineHeight: 10,
   },
+  
   label: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#6c757d',
     textAlign: 'center',
+    lineHeight: 12,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
+  
   activeLabel: {
     color: '#1B7332',
+    fontWeight: 'bold',
   },
 });
 

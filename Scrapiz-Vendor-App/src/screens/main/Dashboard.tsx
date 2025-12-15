@@ -5,16 +5,23 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ScrollView, 
-  Animated
+  Animated,
+  Linking,
+  Alert,
+  RefreshControl,
+  StatusBar
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../../hooks/useAuth';
 import { BookingRequest } from '../../types';
 import { CreditBalance, CreditRechargeModal } from '../../components/ui';
 import CreditLoadingState from '../../components/ui/CreditLoadingState';
+import { BookingCardSkeleton } from '../../components/ui/SkeletonLoader';
 import { creditService } from '../../services/creditService';
 import { creditNotificationService } from '../../services/creditNotificationService';
 import { CreditRechargeResult } from '../../services/creditRechargeService';
+import HapticService from '../../services/hapticService';
+import { bookingStateService } from '../../services/bookingStateService';
 
 interface DashboardProps {
   onBookingSelect: (booking: BookingRequest) => void;
@@ -23,19 +30,17 @@ interface DashboardProps {
   onNavigate: (screen: string) => void;
 }
 
-export default function Dashboard({ onBookingSelect, onShowNotification, onShowToast, onNavigate }: DashboardProps) {
+export default function Dashboard({ onBookingSelect, onShowToast, onNavigate }: DashboardProps) {
   const { user, toggleOnlineStatus } = useAuth();
   const [isOnline, setIsOnline] = useState(user?.isOnline || false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [creditBalance, setCreditBalance] = useState<number>(0);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
-
-
+  const [processedBookings, setProcessedBookings] = useState<string[]>([]);
 
   const [fadeAnim] = useState(new Animated.Value(0));
-
-
+  const [slideAnim] = useState(new Animated.Value(30));
   
   const [bookings] = useState<BookingRequest[]>([
     {
@@ -79,10 +84,6 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
     }
   ]);
 
-
-
-
-
   // Sync with user online status from auth
   useEffect(() => {
     if (user) {
@@ -120,28 +121,40 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
     initializeCreditService();
   }, [user, onShowToast]);
 
-
-
-  // Fade in animation for cards
+  // Enhanced animations for cards
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
-  const handleToggleOnline = () => {
+  const handleToggleOnline = async () => {
     try {
+      await HapticService.medium();
       const newStatus = !isOnline;
       setIsOnline(newStatus);
       toggleOnlineStatus(); // Sync with auth context
+      
+      if (newStatus) {
+        await HapticService.success();
+      }
+      
       onShowToast(
         newStatus ? 'You are now online and ready to receive bookings!' : 'You are now offline',
         'success'
       );
     } catch (error) {
       console.error('Error toggling online status:', error);
+      await HapticService.error();
       onShowToast('Failed to update status. Please try again.', 'error');
     }
   };
@@ -176,11 +189,12 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
     }
   }, [isRefreshing, onShowToast]);
 
-
-
-  const handleBookingAction = async (bookingId: string, action: 'accept' | 'decline' | 'view') => {
+  const handleBookingAction = async (bookingId: string, action: 'accept' | 'decline' | 'view' | 'call') => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
+
+    // Add haptic feedback for better UX
+    await HapticService.light();
 
     switch (action) {
       case 'accept':
@@ -193,51 +207,103 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
           if (currentBalance < requiredCredits) {
             // Show insufficient credit prompt with recharge option
             const shortfall = requiredCredits - currentBalance;
-            onShowToast(
-              `Insufficient credits! Need ${requiredCredits} credits (${shortfall} more) for this ₹${booking.estimatedAmount} booking.`,
-              'error'
-            );
             
-            // Show recharge modal for immediate action
-            setShowRechargeModal(true);
+            Alert.alert(
+              '💳 Insufficient Credits',
+              `You need ${requiredCredits} credits for this ₹${booking.estimatedAmount} booking but only have ${currentBalance}.\n\nShortfall: ${shortfall} credits`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                  text: '⚡ Recharge Now', 
+                  onPress: () => setShowRechargeModal(true)
+                }
+              ]
+            );
             return;
           }
 
-          // Deduct credits for booking acceptance
-          const success = await creditService.deductCredits(
-            requiredCredits,
-            booking.id,
-            booking.estimatedAmount
+          // Confirm acceptance with user
+          Alert.alert(
+            '✅ Accept Booking',
+            `Confirm acceptance?\n\n• Customer: ${booking.customerName}\n• Amount: ₹${booking.estimatedAmount}\n• Credits: ${requiredCredits} will be deducted`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { 
+                text: '✅ Accept', 
+                onPress: async () => {
+                  // Deduct credits for booking acceptance
+                  const success = await creditService.deductCredits(
+                    requiredCredits,
+                    booking.id,
+                    booking.estimatedAmount
+                  );
+
+                  if (success) {
+                    // Add booking to accepted state
+                    bookingStateService.acceptBooking(booking, user?.id || 'vendor');
+                    
+                    // Update processed bookings list
+                    setProcessedBookings(prev => [...prev, booking.id]);
+                    
+                    // Update local balance immediately
+                    const newBalance = await creditService.getCurrentBalance();
+                    setCreditBalance(newBalance);
+                    
+                    // Show booking acceptance success notification
+                    creditNotificationService.showBookingAcceptanceSuccess(
+                      booking.customerName,
+                      requiredCredits,
+                      newBalance
+                    );
+
+                    onShowToast(`✅ Booking accepted! Will appear in Manage tab.`, 'success');
+                    
+                    // Auto-call customer after acceptance
+                    setTimeout(() => {
+                      handleBookingAction(bookingId, 'call');
+                    }, 1000);
+                    
+                  } else {
+                    onShowToast('Failed to accept booking. Please try again.', 'error');
+                  }
+                }
+              }
+            ]
           );
-
-          if (success) {
-            // Update local balance immediately
-            const newBalance = await creditService.getCurrentBalance();
-            setCreditBalance(newBalance);
-            
-            // Show booking acceptance success notification
-            creditNotificationService.showBookingAcceptanceSuccess(
-              booking.customerName,
-              requiredCredits,
-              newBalance
-            );
-
-            // Navigate to active job screen or update booking status
-            // This would typically navigate to an active job tracking screen
-            onShowToast(`Booking accepted! Navigating to ${booking.customerName}.`, 'success');
-            
-          } else {
-            onShowToast('Failed to accept booking. Insufficient credits.', 'error');
-            // Show recharge modal as fallback
-            setShowRechargeModal(true);
-          }
         } catch (error) {
           console.error('Error accepting booking:', error);
           onShowToast('Failed to accept booking. Please try again.', 'error');
         }
         break;
       case 'decline':
-        onShowToast('Booking declined', 'info');
+        Alert.alert(
+          '❌ Decline Booking',
+          `Are you sure you want to decline this booking from ${booking.customerName}?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: '❌ Decline', 
+              style: 'destructive',
+              onPress: () => {
+                // Add booking to declined state
+                bookingStateService.declineBooking(booking, user?.id || 'vendor', 'Declined by vendor');
+                
+                // Update processed bookings list
+                setProcessedBookings(prev => [...prev, booking.id]);
+                
+                onShowToast('Booking declined', 'info');
+              }
+            }
+          ]
+        );
+        break;
+      case 'call':
+        try {
+          const phoneNumber = booking.customerPhone.replace(/\s+/g, '');
+          await Linking.openURL(`tel:${phoneNumber}`);
+        } catch (error) {
+          onShowToast('Unable to make call', 'error');
+        }
         break;
       case 'view':
         onBookingSelect(booking);
@@ -287,15 +353,23 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
     return 'Good Evening';
   }, []);
 
-
-
-
-
-
-
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <StatusBar backgroundColor="#1B7332" barStyle="light-content" />
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#1B7332']}
+            tintColor="#1B7332"
+            progressBackgroundColor="#f8f9fa"
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
         {/* Enhanced Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -374,10 +448,6 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
         </View>
 
         <View style={styles.content}>
-
-
-
-
           {/* Enhanced Booking Requests */}
           <Animated.View style={[styles.bookingsContainer, styles.enhancedBookingsContainer, { opacity: fadeAnim }]}>
             <View style={styles.bookingsHeader}>
@@ -387,157 +457,182 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
                 </View>
                 <View>
                   <Text style={styles.bookingsTitle}>New Booking Requests</Text>
-                  <Text style={styles.bookingsSubtitle}>{bookings.length} requests available</Text>
+                  <Text style={styles.bookingsSubtitle}>
+                    {bookings.filter(booking => !processedBookings.includes(booking.id)).length} requests available
+                  </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleRefresh}
-                disabled={isRefreshing}
-              >
-                <MaterialIcons name="refresh" size={16} color="white" />
-              </TouchableOpacity>
             </View>
 
             <View style={styles.bookingsList}>
               {isRefreshing ? (
                 <View style={styles.loadingContainer}>
                   {[1, 2, 3].map((i) => (
-                    <Animated.View key={i} style={[styles.loadingCard, styles.shimmerCard]}>
-                      <View style={styles.loadingPriorityIndicator} />
-                      <View style={styles.loadingIconPlaceholder} />
-                      <View style={styles.loadingContent}>
-                        <View style={[styles.loadingTitle, styles.shimmer]} />
-                        <View style={[styles.loadingSubtitle, styles.shimmer]} />
-                        <View style={[styles.loadingMetrics, styles.shimmer]} />
-                      </View>
-                      <View style={styles.loadingRight}>
-                        <View style={[styles.loadingAmount, styles.shimmer]} />
-                        <View style={[styles.loadingRoute, styles.shimmer]} />
-                      </View>
-                    </Animated.View>
+                    <BookingCardSkeleton key={i} />
                   ))}
                 </View>
-              ) : bookings.length > 0 ? (
-                bookings.map((booking) => (
-                  <View key={booking.id} style={[styles.bookingCard, styles.enhancedBookingCard]}>
+              ) : bookings.filter(booking => !processedBookings.includes(booking.id)).length > 0 ? (
+                bookings.filter(booking => !processedBookings.includes(booking.id)).map((booking) => (
+                  <Animated.View 
+                    key={booking.id} 
+                    style={[
+                      styles.bookingCard, 
+                      styles.enhancedBookingCard,
+                      { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                    ]}
+                  >
+                    {/* More prominent priority indicator */}
                     <View style={[
-                      styles.priorityIndicator, 
+                      styles.priorityStrip, 
                       { backgroundColor: getPriorityColor(booking.priority || 'medium') }
                     ]} />
                     
-                    <View style={styles.bookingHeader}>
-                      <View style={styles.bookingLeft}>
-                        <View style={styles.bookingTitleRow}>
-                          <Text style={styles.bookingTitle}>{booking.scrapType}</Text>
+                    {/* Simplified card header */}
+                    <View style={styles.cardHeader}>
+                      <View style={styles.leftSection}>
+                        <View style={styles.titleRow}>
+                          <Text style={styles.scrapType}>{booking.scrapType}</Text>
                           <View style={[
                             styles.priorityBadge,
-                            { backgroundColor: `${getPriorityColor(booking.priority || 'medium')}20` }
+                            { backgroundColor: getPriorityColor(booking.priority || 'medium') }
                           ]}>
-                            <Text style={[
-                              styles.priorityText,
-                              { color: getPriorityColor(booking.priority || 'medium') }
-                            ]}>
-                              {booking.priority?.toUpperCase() || 'MEDIUM'}
+                            <MaterialIcons 
+                              name="priority-high" 
+                              size={10} 
+                              color="white" 
+                            />
+                            <Text style={styles.priorityText}>
+                              {booking.priority?.toUpperCase() || 'MED'}
                             </Text>
                           </View>
                         </View>
+                        
                         <Text style={styles.customerName}>{booking.customerName}</Text>
-                        <View style={styles.bookingMetrics}>
-                          <View style={styles.metricItem}>
-                            <MaterialIcons name="location-on" size={12} color="#6c757d" />
-                            <Text style={styles.metricText}>{booking.distance}</Text>
+                        
+                        <View style={styles.quickInfo}>
+                          <View style={styles.infoItem}>
+                            <MaterialIcons name="location-on" size={12} color="#1B7332" />
+                            <Text style={styles.infoText}>{booking.distance}</Text>
                           </View>
-                          <View style={styles.metricItem}>
-                            <MaterialIcons name="access-time" size={12} color="#6c757d" />
-                            <Text style={styles.metricText}>{booking.estimatedTime || '15 mins'}</Text>
+                          <View style={styles.infoItem}>
+                            <MaterialIcons name="schedule" size={12} color="#1B7332" />
+                            <Text style={styles.infoText}>{booking.estimatedTime || '15 mins'}</Text>
                           </View>
                         </View>
                       </View>
-                      <View style={styles.bookingRight}>
-                        <Text style={styles.bookingAmount}>₹{booking.estimatedAmount}</Text>
-                        <View style={styles.creditRequirement}>
-                          <MaterialIcons name="stars" size={12} color="#1B7332" />
-                          <Text style={styles.creditText}>
-                            {creditService.calculateRequiredCredits(booking.estimatedAmount)} credits
+                      
+                      <View style={styles.rightSection}>
+                        <Text style={styles.amount}>₹{booking.estimatedAmount}</Text>
+                        <View style={styles.creditBadge}>
+                          <MaterialIcons name="stars" size={12} color="#FF9800" />
+                          <Text style={styles.creditValue}>
+                            {creditService.calculateRequiredCredits(booking.estimatedAmount)}
                           </Text>
-                        </View>
-                        <View style={styles.routePreview}>
-                          <MaterialIcons name="navigation" size={16} color="#1B7332" />
-                          <Text style={styles.routeText}>View Route</Text>
                         </View>
                       </View>
                     </View>
                     
-                    <View style={styles.bookingFooter}>
-                      <View style={styles.timeAgoContainer}>
-                        <MaterialIcons name="access-time" size={12} color="#6c757d" style={styles.clockIcon} />
-                        <Text style={styles.timeAgo}>Just now</Text>
+                    {/* Time indicator at bottom */}
+                    <View style={styles.timeSection}>
+                      <View style={styles.timeInfo}>
+                        <View style={styles.urgencyDot} />
+                        <Text style={styles.timeText}>Just now</Text>
                       </View>
-                      <View style={styles.actionButtons}>
+                      <TouchableOpacity 
+                        style={styles.viewDetailsBtn}
+                        onPress={() => handleBookingAction(booking.id, 'view')}
+                      >
+                        <Text style={styles.viewDetailsText}>View Details</Text>
+                        <MaterialIcons name="arrow-forward-ios" size={12} color="#1B7332" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Enhanced action bar - Call button removed */}
+                    <View style={styles.actionBar}>
+                      <View style={styles.mainActionsFullWidth}>
                         <TouchableOpacity
-                          style={styles.declineButton}
+                          style={styles.declineBtnWider}
                           onPress={() => handleBookingAction(booking.id, 'decline')}
+                          activeOpacity={0.8}
                         >
-                          <MaterialIcons name="close" size={14} color="#dc3545" />
+                          <Text style={styles.declineText}>Decline</Text>
                         </TouchableOpacity>
+                        
                         <TouchableOpacity
-                          style={styles.viewButton}
-                          onPress={() => handleBookingAction(booking.id, 'view')}
-                        >
-                          <MaterialIcons name="visibility" size={14} color="white" />
-                          <Text style={styles.viewButtonText}>View</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.acceptButton}
+                          style={styles.acceptBtn}
                           onPress={() => handleBookingAction(booking.id, 'accept')}
+                          activeOpacity={0.8}
                         >
-                          <MaterialIcons name="check" size={14} color="white" />
-                          <Text style={styles.acceptButtonText}>Accept</Text>
+                          <MaterialIcons name="check-circle" size={16} color="white" />
+                          <Text style={styles.acceptText}>Accept</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
-                  </View>
+                    
+
+                  </Animated.View>
                 ))
               ) : (
-                <View style={styles.emptyContainer}>
-                  <View style={styles.emptyIcon}>
-                    <MaterialIcons name="schedule" size={32} color="#6c757d" />
-                  </View>
-                  <Text style={styles.emptyTitle}>No new bookings right now</Text>
+                <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
+                  <Animated.View style={[
+                    styles.emptyAnimation,
+                    { transform: [{ scale: fadeAnim }] }
+                  ]}>
+                    <View style={styles.emptyIconContainer}>
+                      <MaterialIcons name="schedule" size={48} color="#1B7332" />
+                      <View style={styles.pulsingDot} />
+                    </View>
+                  </Animated.View>
+                  
+                  <Text style={styles.emptyTitle}>Ready for new pickups!</Text>
                   <Text style={styles.emptySubtitle}>
-                    We&apos;ll notify you when new pickup requests arrive!
+                    We'll notify you as soon as requests come in
                   </Text>
+                  
                   <View style={styles.emptyActions}>
                     <TouchableOpacity
-                      style={styles.refreshEmptyButton}
+                      style={[styles.refreshButton, isRefreshing && styles.refreshButtonLoading]}
                       onPress={handleRefresh}
                       disabled={isRefreshing}
+                      activeOpacity={0.8}
                     >
-                      <MaterialIcons name="refresh" size={16} color="white" style={{ marginRight: 6 }} />
-                      <Text style={styles.refreshEmptyButtonText}>
-                        {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
+                      <MaterialIcons 
+                        name={isRefreshing ? "hourglass-empty" : "refresh"} 
+                        size={18} 
+                        color="white" 
+                      />
+                      <Text style={styles.refreshButtonText}>
+                        {isRefreshing ? 'Checking...' : 'Check for updates'}
                       </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.historyButton}
+                  </View>
+                  
+                  <View style={styles.quickActions}>
+                    <TouchableOpacity 
+                      style={styles.quickAction}
                       onPress={() => onNavigate('JobHistoryScreen')}
                     >
-                      <MaterialIcons name="history" size={16} color="#1B7332" style={{ marginRight: 6 }} />
-                      <Text style={styles.historyButtonText}>View History</Text>
+                      <MaterialIcons name="history" size={20} color="#1B7332" />
+                      <Text style={styles.quickActionText}>History</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.quickAction}
+                      onPress={() => onNavigate('ProfileScreen')}
+                    >
+                      <MaterialIcons name="person" size={20} color="#1B7332" />
+                      <Text style={styles.quickActionText}>Profile</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.quickAction}
+                      onPress={() => onNavigate('credit')}
+                    >
+                      <MaterialIcons name="account-balance-wallet" size={20} color="#1B7332" />
+                      <Text style={styles.quickActionText}>Credits</Text>
                     </TouchableOpacity>
                   </View>
-                  <View style={styles.emptySuggestions}>
-                    <Text style={styles.suggestionsTitle}>While you wait:</Text>
-                    <View style={styles.suggestionsList}>
-                      <TouchableOpacity style={styles.suggestionItem} onPress={() => onNavigate('ProfileScreen')}>
-                        <MaterialIcons name="person" size={16} color="#1B7332" />
-                        <Text style={styles.suggestionText}>Update your profile</Text>
-                      </TouchableOpacity>
-
-                    </View>
-                  </View>
-                </View>
+                </Animated.View>
               )}
             </View>
           </Animated.View>
@@ -560,19 +655,20 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#1B7332', // Match header color to avoid gaps
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#F7F9FC', // Content background
   },
   scrollContent: {
-    paddingBottom: 120, // Extra space for bottom navigation
+    paddingBottom: 80, // Reduced for compact navigation
   },
   header: {
     backgroundColor: '#1B7332',
     paddingHorizontal: 16,
-    paddingTop: 44, // Safe area for status bar
-    paddingBottom: 16,
+    paddingTop: 50,
+    paddingBottom: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     shadowColor: '#1B7332',
@@ -580,6 +676,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 4,
+    marginTop: -6, // Ensure no gap at top
   },
   headerContent: {
     flexDirection: 'row',
@@ -609,46 +706,20 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom: 4,
   },
-  locationWeatherContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 12,
-    color: '#E8F5E8',
-    fontWeight: '500',
-  },
-  weatherContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  weatherText: {
-    fontSize: 12,
-    color: '#E8F5E8',
-    fontWeight: '500',
-  },
   readyText: {
     fontSize: 14,
     color: '#E8F5E8',
     fontWeight: '500',
   },
-
   statusContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -707,23 +778,29 @@ const styles = StyleSheet.create({
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+    minWidth: 90,
+    justifyContent: 'center',
   },
   toggleButtonOnline: {
     backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   toggleButtonOffline: {
     backgroundColor: '#dc3545',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 53, 69, 0.3)',
   },
   toggleButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
   },
   toggleTextOnline: {
@@ -733,11 +810,8 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   content: {
-    padding: 16, // Reduced from 20
+    padding: 16,
   },
-
-
-
   bookingsContainer: {
     backgroundColor: 'white',
     borderRadius: 20,
@@ -762,7 +836,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16, // Reduced from 20
+    padding: 16,
     backgroundColor: '#f8f9fa',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
@@ -782,385 +856,381 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   bookingsTitle: {
-    fontSize: 16, // Reduced from 18
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 2,
   },
   bookingsSubtitle: {
-    fontSize: 11, // Reduced from 12
+    fontSize: 11,
     color: '#6c757d',
     fontWeight: '600',
   },
-  refreshButton: {
-    backgroundColor: '#1B7332',
-    borderRadius: 10, // Reduced from 12
-    padding: 10, // Reduced from 12
-    shadowColor: '#1B7332',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-
   bookingsList: {
-    padding: 16, // Reduced from 20
+    padding: 16,
   },
   loadingContainer: {
     gap: 16,
   },
-  loadingCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  shimmerCard: {
-    backgroundColor: '#f8f9fa',
-  },
-  shimmer: {
-    backgroundColor: '#e9ecef',
-  },
-  loadingPriorityIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    backgroundColor: '#e9ecef',
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-  },
-  loadingRight: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  loadingMetrics: {
-    height: 8,
-    backgroundColor: '#e9ecef',
-    borderRadius: 3,
-    width: '60%',
-    marginTop: 4,
-  },
-  loadingRoute: {
-    height: 12,
-    backgroundColor: '#e9ecef',
-    borderRadius: 6,
-    width: 60,
-  },
-  loadingIconPlaceholder: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#e9ecef',
-    borderRadius: 8,
-  },
-  loadingContent: {
-    flex: 1,
-    gap: 6,
-  },
-  loadingTitle: {
-    height: 14,
-    backgroundColor: '#e9ecef',
-    borderRadius: 3,
-    width: '70%',
-  },
-  loadingSubtitle: {
-    height: 10,
-    backgroundColor: '#e9ecef',
-    borderRadius: 3,
-    width: '50%',
-  },
-  loadingAmount: {
-    height: 18,
-    backgroundColor: '#e9ecef',
-    borderRadius: 3,
-    width: 50,
-  },
+  
+  // Enhanced booking card styles
   bookingCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(40, 167, 69, 0.08)',
+    borderRadius: 16, // Reduced from 20
+    padding: 0,
+    marginBottom: 12, // Reduced from 16
     position: 'relative',
-  },
-  priorityIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
+    overflow: 'hidden',
+    minHeight: 140, // Reduced from 160
   },
   enhancedBookingCard: {
     shadowColor: '#1B7332',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 4,
-    borderColor: 'rgba(40, 167, 69, 0.12)',
-    backgroundColor: '#fafffe',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(27, 115, 50, 0.08)',
   },
-  bookingHeader: {
+  
+  // More prominent priority strip
+  priorityStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 6, // Reduced from 8
+    borderTopLeftRadius: 16, // Match card radius
+    borderBottomLeftRadius: 16,
+  },
+  
+  // Simplified card structure
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12, // Reduced from 16
+    padding: 12, // Reduced from 16
+    paddingLeft: 18, // Adjusted for smaller priority strip
+    paddingBottom: 8, // Reduced from 12
   },
-  bookingLeft: {
+  
+  leftSection: {
     flex: 1,
-    paddingRight: 10, // Reduced from 12
+    paddingRight: 12,
   },
-  bookingTitleRow: {
+  
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
-    flexWrap: 'wrap',
     gap: 6,
+    flexWrap: 'wrap',
   },
-  priorityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  priorityText: {
-    fontSize: 8,
-    fontWeight: '700',
-  },
-  bookingMetrics: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  metricItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metricText: {
-    fontSize: 11,
-    color: '#6c757d',
-    fontWeight: '500',
-  },
-  bookingTitle: {
+  
+  scrapType: {
     fontSize: 15, // Reduced from 16
     fontWeight: 'bold',
     color: '#333',
-    marginRight: 6, // Reduced from 8
+    flexShrink: 1,
   },
-
+  
+  priorityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    flexShrink: 0,
+  },
+  
+  priorityText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  
   customerName: {
-    fontSize: 13, // Reduced from 14
-    color: '#6c757d',
+    fontSize: 14,
+    color: '#666',
     fontWeight: '600',
+    marginBottom: 6,
   },
-  bookingRight: {
-    alignItems: 'flex-end',
-    gap: 8,
+  
+  quickInfo: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
   },
-  creditRequirement: {
+  
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(40, 167, 69, 0.08)',
+  },
+  
+  infoText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  
+  rightSection: {
+    alignItems: 'flex-end',
+    gap: 6,
+    minWidth: 80,
+  },
+  
+  amount: {
+    fontSize: 18, // Reduced from 20
+    fontWeight: 'bold',
+    color: '#1B7332',
+  },
+  
+  creditBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    gap: 2,
   },
-  creditText: {
+  
+  creditValue: {
     fontSize: 10,
-    color: '#1B7332',
-    fontWeight: '600',
-  },
-  routePreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(40, 167, 69, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  routeText: {
-    fontSize: 10,
-    color: '#1B7332',
-    fontWeight: '600',
-  },
-  bookingAmount: {
-    fontSize: 20, // Reduced from 22
-    fontWeight: 'bold',
-    color: '#1B7332',
-    marginBottom: 2, // Reduced from 4
-  },
-  distanceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationIcon: {
-    marginRight: 4,
-  },
-  distanceText: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '600',
-  },
-  bookingFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  timeAgoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  clockIcon: {
-    marginRight: 4,
-  },
-  timeAgo: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '600',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  declineButton: {
-    backgroundColor: 'rgba(220, 53, 69, 0.1)',
-    padding: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(220, 53, 69, 0.2)',
-  },
-  viewButton: {
-    backgroundColor: '#6c757d',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-  acceptButton: {
-    backgroundColor: '#1B7332',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 4,
-  },
-  acceptButtonText: {
-    color: 'white',
-    fontSize: 12,
+    color: '#FF9800',
     fontWeight: 'bold',
   },
-  viewButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  arrowIcon: {
-    marginLeft: 4,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 32, // Reduced from 40
-  },
-  emptyIcon: {
-    width: 64, // Reduced from 80
-    height: 64, // Reduced from 80
-    backgroundColor: '#f8f9fa',
-    borderRadius: 32, // Reduced from 40
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12, // Reduced from 16
-    borderWidth: 2,
-    borderColor: '#e9ecef',
-  },
-
-  emptyTitle: {
-    fontSize: 16, // Reduced from 18
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 6, // Reduced from 8
-  },
-  emptySubtitle: {
-    fontSize: 13, // Reduced from 14
-    color: '#6c757d',
-    textAlign: 'center',
-    marginBottom: 16, // Reduced from 20
-    paddingHorizontal: 16, // Reduced from 20
-    lineHeight: 18, // Reduced from 20
-  },
-  emptyActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  refreshEmptyButton: {
-    backgroundColor: '#1B7332',
+  
+  // Enhanced action bar
+  actionBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    gap: 10,
+  },
+  
+  quickCallButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(27, 115, 50, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(27, 115, 50, 0.2)',
+  },
+  
+  mainActions: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  
+  // New full-width main actions (without call button)
+  mainActionsFullWidth: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  
+  declineBtn: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#dc3545',
+    borderRadius: 10,
     paddingVertical: 10,
-    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Wider decline button (increased width)
+  declineBtnWider: {
+    flex: 1.5,
+    backgroundColor: 'white',
+    borderWidth: 1.5,
+    borderColor: '#dc3545',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  declineText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#dc3545',
+  },
+  
+  acceptBtn: {
+    flex: 2,
+    backgroundColor: '#1B7332',
+    borderRadius: 10,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     shadowColor: '#1B7332',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
-  refreshEmptyButtonText: {
-    color: 'white',
+  
+  acceptText: {
     fontSize: 12,
     fontWeight: 'bold',
+    color: 'white',
   },
-  historyButton: {
-    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+  
+  // Time section at bottom
+  timeSection: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(40, 167, 69, 0.2)',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
   },
-  historyButtonText: {
-    color: '#1B7332',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  emptySuggestions: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  suggestionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  suggestionsList: {
-    gap: 8,
-  },
-  suggestionItem: {
+  
+  timeInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(40, 167, 69, 0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: 6,
   },
-  suggestionText: {
+  
+  urgencyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#ff4757',
+  },
+  
+  timeText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+  },
+  
+  viewDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  
+  viewDetailsText: {
+    fontSize: 11,
+    color: '#1B7332',
+    fontWeight: '600',
+  },
+
+  
+  // Enhanced empty state
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  
+  emptyAnimation: {
+    alignItems: 'center',
+    marginBottom: 20, // Reduced from 24
+  },
+  
+  emptyIconContainer: {
+    width: 64, // Reduced from 80
+    height: 64,
+    backgroundColor: 'rgba(27, 115, 50, 0.1)',
+    borderRadius: 32, // Reduced from 40
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    borderWidth: 2, // Reduced from 3
+    borderColor: 'rgba(27, 115, 50, 0.2)',
+  },
+  
+  pulsingDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#00ff00',
+  },
+  
+  emptyTitle: {
+    fontSize: 18, // Reduced from 20
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6, // Reduced from 8
+    textAlign: 'center',
+  },
+  
+  emptySubtitle: {
+    fontSize: 14, // Reduced from 16
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20, // Reduced from 24
+    lineHeight: 20, // Reduced from 22
+  },
+  
+  emptyActions: {
+    marginBottom: 32,
+  },
+  
+  refreshButton: {
+    backgroundColor: '#1B7332',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  
+  refreshButtonLoading: {
+    backgroundColor: '#666',
+  },
+  
+  refreshButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  
+  quickActions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  
+  quickAction: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(27, 115, 50, 0.05)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(27, 115, 50, 0.1)',
+  },
+  
+  quickActionText: {
     fontSize: 12,
     color: '#1B7332',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

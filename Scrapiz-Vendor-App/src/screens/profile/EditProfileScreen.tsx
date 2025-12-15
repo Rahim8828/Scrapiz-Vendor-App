@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../hooks/useAuth';
+import { getFloatingElementMargin } from '../../utils/safeAreaUtils';
 
 interface EditProfileScreenProps {
   onBack: () => void;
@@ -10,6 +12,9 @@ interface EditProfileScreenProps {
 
 const EditProfileScreen = ({ onBack, onShowToast }: EditProfileScreenProps) => {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const floatingMargin = getFloatingElementMargin();
+  
   const [profileData, setProfileData] = useState({
     name: user?.name || 'Nooroolhuda',
     phone: user?.phone || '+91 9967332092',
@@ -166,7 +171,12 @@ const EditProfileScreen = ({ onBack, onShowToast }: EditProfileScreenProps) => {
       </ScrollView>
 
       {/* Floating Save Button */}
-      <View style={styles.floatingButton}>
+      <View style={[
+        styles.floatingButton,
+        {
+          paddingBottom: Math.max(insets.bottom + 16, floatingMargin.bottom),
+        }
+      ]}>
         <TouchableOpacity
           style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
           onPress={handleSave}

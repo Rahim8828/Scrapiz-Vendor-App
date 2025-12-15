@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrapItem } from '../../types';
+import { getFloatingElementMargin } from '../../utils/safeAreaUtils';
 
 interface JobCompletionProps {
   onJobComplete: (totalAmount: number) => void;
@@ -21,6 +23,9 @@ const scrapOptions: Omit<ScrapItem, 'weight'>[] = [
 ];
 
 const JobCompletion = ({ onJobComplete, onBack, onShowToast }: JobCompletionProps) => {
+  const insets = useSafeAreaInsets();
+  const floatingMargin = getFloatingElementMargin();
+  
   const [scrapItems, setScrapItems] = useState<ScrapItem[]>([
     { ...scrapOptions[0], weight: 0 },
     { ...scrapOptions[1], weight: 0 },
@@ -149,7 +154,12 @@ const JobCompletion = ({ onJobComplete, onBack, onShowToast }: JobCompletionProp
         </TouchableOpacity>
       </ScrollView>
 
-      <View style={styles.bottomSection}>
+      <View style={[
+        styles.bottomSection,
+        {
+          paddingBottom: Math.max(insets.bottom + 16, floatingMargin.bottom),
+        }
+      ]}>
         <View style={styles.totalCard}>
           <View style={styles.totalHeader}>
             <View style={styles.totalIcon}>

@@ -17,6 +17,13 @@ export interface BookingRequest {
   createdAt: Date;
   priority?: 'high' | 'medium' | 'low';
   estimatedTime?: string;
+  urgencyTimer?: string;
+  customerRating?: number;
+  customerReviews?: number;
+  isVerified?: boolean;
+  estimatedWeight?: string;
+  baseRate?: number;
+  distanceBonus?: number;
 }
 
 export interface ActiveJob extends BookingRequest {

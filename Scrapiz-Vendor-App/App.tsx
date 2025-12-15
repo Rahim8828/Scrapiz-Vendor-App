@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Alert, StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 
 // Auth Screens
@@ -273,6 +274,11 @@ const AppContent = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar 
+        backgroundColor="#1B7332" 
+        barStyle="light-content" 
+        translucent={false}
+      />
       {renderContent()}
       
       {/* Show bottom navigation except on active job and completion screens */}
@@ -296,11 +302,13 @@ const styles = StyleSheet.create({
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
