@@ -10,6 +10,11 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../../hooks/useAuth';
 import { BookingRequest } from '../../types';
+import { CreditBalance, CreditRechargeModal } from '../../components/ui';
+import CreditLoadingState from '../../components/ui/CreditLoadingState';
+import { creditService } from '../../services/creditService';
+import { creditNotificationService } from '../../services/creditNotificationService';
+import { CreditRechargeResult } from '../../services/creditRechargeService';
 
 interface DashboardProps {
   onBookingSelect: (booking: BookingRequest) => void;
@@ -22,8 +27,11 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
   const { user, toggleOnlineStatus } = useAuth();
   const [isOnline, setIsOnline] = useState(user?.isOnline || false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [creditBalance, setCreditBalance] = useState<number>(0);
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [loadingBalance, setLoadingBalance] = useState(true);
 
-  const [notificationCount, setNotificationCount] = useState(3);
+
 
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -82,6 +90,36 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
     }
   }, [user]);
 
+  // Initialize credit service and load balance when user is available
+  useEffect(() => {
+    const initializeCreditService = async () => {
+      if (!user) return;
+      
+      try {
+        // Set vendor ID in credit service
+        creditService.setVendorId(user.id);
+        
+        // Set toast handler for notifications
+        creditService.setToastHandler(onShowToast);
+        
+        // Load credit balance
+        setLoadingBalance(true);
+        const balance = await creditService.getCurrentBalance();
+        setCreditBalance(balance);
+        
+        // Optimize performance by preloading data
+        await creditService.optimizePerformance();
+      } catch (error) {
+        console.error('Failed to initialize credit service:', error);
+        onShowToast('Failed to load credit balance', 'error');
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+
+    initializeCreditService();
+  }, [user, onShowToast]);
+
 
 
   // Fade in animation for cards
@@ -138,28 +176,65 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
     }
   }, [isRefreshing, onShowToast]);
 
-  const handleNotificationClick = () => {
-    try {
-      // Show available booking requests
-      if (bookings.length > 0) {
-        onShowNotification(); // Show notifications screen
-        setNotificationCount(0);
-      } else {
-        onShowToast('No new booking requests available', 'info');
-      }
-    } catch (error) {
-      console.error('Error opening booking request:', error);
-      onShowToast('Failed to open booking request', 'error');
-    }
-  };
 
-  const handleBookingAction = (bookingId: string, action: 'accept' | 'decline' | 'view') => {
+
+  const handleBookingAction = async (bookingId: string, action: 'accept' | 'decline' | 'view') => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
     switch (action) {
       case 'accept':
-        onShowToast(`Booking accepted! Navigating to ${booking.customerName}`, 'success');
+        try {
+          // Calculate required credits for this booking
+          const requiredCredits = creditService.calculateRequiredCredits(booking.estimatedAmount);
+          const currentBalance = await creditService.getCurrentBalance();
+          
+          // Validate credit requirements before booking acceptance
+          if (currentBalance < requiredCredits) {
+            // Show insufficient credit prompt with recharge option
+            const shortfall = requiredCredits - currentBalance;
+            onShowToast(
+              `Insufficient credits! Need ${requiredCredits} credits (${shortfall} more) for this ₹${booking.estimatedAmount} booking.`,
+              'error'
+            );
+            
+            // Show recharge modal for immediate action
+            setShowRechargeModal(true);
+            return;
+          }
+
+          // Deduct credits for booking acceptance
+          const success = await creditService.deductCredits(
+            requiredCredits,
+            booking.id,
+            booking.estimatedAmount
+          );
+
+          if (success) {
+            // Update local balance immediately
+            const newBalance = await creditService.getCurrentBalance();
+            setCreditBalance(newBalance);
+            
+            // Show booking acceptance success notification
+            creditNotificationService.showBookingAcceptanceSuccess(
+              booking.customerName,
+              requiredCredits,
+              newBalance
+            );
+
+            // Navigate to active job screen or update booking status
+            // This would typically navigate to an active job tracking screen
+            onShowToast(`Booking accepted! Navigating to ${booking.customerName}.`, 'success');
+            
+          } else {
+            onShowToast('Failed to accept booking. Insufficient credits.', 'error');
+            // Show recharge modal as fallback
+            setShowRechargeModal(true);
+          }
+        } catch (error) {
+          console.error('Error accepting booking:', error);
+          onShowToast('Failed to accept booking. Please try again.', 'error');
+        }
         break;
       case 'decline':
         onShowToast('Booking declined', 'info');
@@ -168,6 +243,32 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
         onBookingSelect(booking);
         break;
     }
+  };
+
+  const handleCreditPress = () => {
+    onNavigate('credit');
+  };
+
+  const handleRechargeSuccess = async (result: CreditRechargeResult) => {
+    if (result.newBalance !== undefined) {
+      setCreditBalance(result.newBalance);
+    } else {
+      // Refresh balance from service
+      try {
+        const newBalance = await creditService.getCurrentBalance();
+        setCreditBalance(newBalance);
+      } catch (error) {
+        console.error('Failed to refresh balance:', error);
+      }
+    }
+    onShowToast(
+      `Successfully added ${result.creditsAdded} credits! New balance: ${result.newBalance}`,
+      'success'
+    );
+  };
+
+  const handleRechargeError = (error: string) => {
+    onShowToast(error, 'error');
   };
 
   const getPriorityColor = (priority: string) => {
@@ -201,28 +302,24 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
             <View style={styles.headerLeft}>
               <View style={styles.greetingContainer}>
                 <Text style={styles.greeting}>
-                  {getGreeting()}, {user?.name || 'Vendor'}!
+                  {getGreeting()}!
+                </Text>
+                <Text style={styles.userName}>
+                  {user?.name || 'Vendor'}
                 </Text>
               </View>
               <Text style={styles.readyText}>Ready to collect scrap today?</Text>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity
-                style={styles.notificationButton}
-                onPress={handleNotificationClick}
-              >
-                <View style={styles.notificationContent}>
-                  <MaterialIcons name="notifications" size={18} color="white" />
-                  <Text style={styles.notificationText}>Requests</Text>
-                </View>
-                {notificationCount > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <Text style={styles.notificationCount}>
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              {loadingBalance ? (
+                <CreditLoadingState type="balance" />
+              ) : (
+                <CreditBalance 
+                  balance={creditBalance}
+                  onPress={handleCreditPress}
+                  showWarning={creditBalance < 5}
+                />
+              )}
             </View>
           </View>
 
@@ -359,6 +456,12 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
                       </View>
                       <View style={styles.bookingRight}>
                         <Text style={styles.bookingAmount}>₹{booking.estimatedAmount}</Text>
+                        <View style={styles.creditRequirement}>
+                          <MaterialIcons name="stars" size={12} color="#1B7332" />
+                          <Text style={styles.creditText}>
+                            {creditService.calculateRequiredCredits(booking.estimatedAmount)} credits
+                          </Text>
+                        </View>
                         <View style={styles.routePreview}>
                           <MaterialIcons name="navigation" size={16} color="#1B7332" />
                           <Text style={styles.routeText}>View Route</Text>
@@ -403,7 +506,7 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
                   </View>
                   <Text style={styles.emptyTitle}>No new bookings right now</Text>
                   <Text style={styles.emptySubtitle}>
-                    We'll notify you when new pickup requests arrive!
+                    We&apos;ll notify you when new pickup requests arrive!
                   </Text>
                   <View style={styles.emptyActions}>
                     <TouchableOpacity
@@ -440,6 +543,16 @@ export default function Dashboard({ onBookingSelect, onShowNotification, onShowT
           </Animated.View>
         </View>
       </ScrollView>
+
+      {/* Credit Recharge Modal */}
+      <CreditRechargeModal
+        visible={showRechargeModal}
+        onClose={() => setShowRechargeModal(false)}
+        onRechargeSuccess={handleRechargeSuccess}
+        onRechargeError={handleRechargeError}
+        currentBalance={creditBalance}
+        onNavigateToCredit={() => onNavigate('credit')}
+      />
     </View>
   );
 }
@@ -485,7 +598,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   greeting: {
-    fontSize: 20,
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 2,
+  },
+  userName: {
+    fontSize: 22,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 4,
@@ -520,53 +639,7 @@ const styles = StyleSheet.create({
     color: '#E8F5E8',
     fontWeight: '500',
   },
-  notificationButton: {
-    position: 'relative',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    minWidth: 80,
-  },
-  notificationContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  notificationText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
 
-  notificationBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#dc3545',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#dc3545',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  notificationCount: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
   statusContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: 16,
@@ -890,6 +963,20 @@ const styles = StyleSheet.create({
   bookingRight: {
     alignItems: 'flex-end',
     gap: 8,
+  },
+  creditRequirement: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(40, 167, 69, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  creditText: {
+    fontSize: 10,
+    color: '#1B7332',
+    fontWeight: '600',
   },
   routePreview: {
     flexDirection: 'row',

@@ -8,10 +8,15 @@ interface BookingDetailsScreenProps {
   onBack: () => void;
   onAccept: () => void;
   onReject: () => void;
+  isAccepted?: boolean; // New prop to track if booking is accepted
 }
 
-const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDetailsScreenProps) => {
+const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject, isAccepted = false }: BookingDetailsScreenProps) => {
   const handleCall = () => {
+    if (!isAccepted) {
+      // Show alert that phone number is only available after accepting
+      return;
+    }
     Linking.openURL(`tel:${booking.customerPhone}`);
   };
 
@@ -21,7 +26,18 @@ const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDe
   };
 
   const handleMessage = () => {
+    if (!isAccepted) {
+      // Show alert that messaging is only available after accepting
+      return;
+    }
     Linking.openURL(`sms:${booking.customerPhone}`);
+  };
+
+  const handleRevealContact = () => {
+    if (!isAccepted) {
+      // This will be handled by the accept button
+      return;
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -105,6 +121,21 @@ const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDe
           </View>
         </View>
 
+        {/* Privacy Notice for Contact Information */}
+        {!isAccepted && (
+          <View style={styles.privacyNotice}>
+            <View style={styles.privacyIcon}>
+              <MaterialIcons name="security" size={20} color="#1B7332" />
+            </View>
+            <View style={styles.privacyContent}>
+              <Text style={styles.privacyTitle}>Customer Privacy Protected</Text>
+              <Text style={styles.privacyText}>
+                Contact details will be revealed after you accept this booking request. This protects customer privacy and ensures committed service.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Enhanced Customer Details */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -113,8 +144,15 @@ const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDe
             </View>
             <View style={styles.cardHeaderText}>
               <Text style={styles.cardTitle}>Customer Details</Text>
-              <Text style={styles.cardSubtitle}>Contact information</Text>
+              <Text style={styles.cardSubtitle}>
+                {isAccepted ? "Contact information" : "Limited information available"}
+              </Text>
             </View>
+            {!isAccepted && (
+              <View style={styles.lockBadge}>
+                <MaterialIcons name="lock" size={16} color="#6c757d" />
+              </View>
+            )}
           </View>
           <View style={styles.cardContent}>
             <View style={styles.customerCard}>
@@ -131,18 +169,50 @@ const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDe
                 </View>
                 
                 <View style={styles.contactDetails}>
-                  <TouchableOpacity style={styles.contactItem} onPress={handleCall} activeOpacity={0.7}>
-                    <View style={styles.contactIcon}>
-                      <MaterialIcons name="phone" size={16} color="#1B7332" />
+                  <TouchableOpacity 
+                    style={[
+                      styles.contactItem, 
+                      !isAccepted && styles.contactItemLocked
+                    ]} 
+                    onPress={isAccepted ? handleCall : handleRevealContact} 
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.contactIcon,
+                      !isAccepted && styles.contactIconLocked
+                    ]}>
+                      <MaterialIcons 
+                        name={isAccepted ? "phone" : "lock"} 
+                        size={16} 
+                        color={isAccepted ? "#1B7332" : "#6c757d"} 
+                      />
                     </View>
                     <View style={styles.contactInfo}>
                       <Text style={styles.contactLabel}>Phone Number</Text>
-                      <Text style={styles.contactValue}>
-                        {booking.customerPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-***-$3')}
+                      <Text style={[
+                        styles.contactValue,
+                        !isAccepted && styles.contactValueHidden
+                      ]}>
+                        {isAccepted 
+                          ? booking.customerPhone 
+                          : booking.customerPhone.replace(/(\d{2})\d{6}(\d{2})/, '$1******$2')
+                        }
                       </Text>
-                      <Text style={styles.contactHint}>Tap to reveal & call</Text>
+                      <Text style={[
+                        styles.contactHint,
+                        !isAccepted && styles.contactHintLocked
+                      ]}>
+                        {isAccepted 
+                          ? "Tap to call customer" 
+                          : "Accept booking to reveal number"
+                        }
+                      </Text>
                     </View>
-                    <MaterialIcons name="chevron-right" size={20} color="#6c757d" />
+                    <MaterialIcons 
+                      name={isAccepted ? "chevron-right" : "lock"} 
+                      size={20} 
+                      color="#6c757d" 
+                    />
                   </TouchableOpacity>
                 </View>
 
@@ -162,13 +232,47 @@ const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDe
             </View>
 
             <View style={styles.quickContactActions}>
-              <TouchableOpacity style={styles.contactActionBtn} onPress={handleCall} activeOpacity={0.8}>
-                <MaterialIcons name="phone" size={18} color="white" />
-                <Text style={styles.contactActionText}>Call Now</Text>
+              <TouchableOpacity 
+                style={[
+                  styles.contactActionBtn,
+                  !isAccepted && styles.contactActionBtnDisabled
+                ]} 
+                onPress={handleCall} 
+                activeOpacity={isAccepted ? 0.8 : 0.5}
+                disabled={!isAccepted}
+              >
+                <MaterialIcons 
+                  name={isAccepted ? "phone" : "lock"} 
+                  size={18} 
+                  color={isAccepted ? "white" : "#6c757d"} 
+                />
+                <Text style={[
+                  styles.contactActionText,
+                  !isAccepted && styles.contactActionTextDisabled
+                ]}>
+                  {isAccepted ? "Call Now" : "Locked"}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.contactActionBtn2} onPress={handleMessage} activeOpacity={0.8}>
-                <MaterialIcons name="message" size={18} color="#1B7332" />
-                <Text style={styles.contactActionText2}>Message</Text>
+              <TouchableOpacity 
+                style={[
+                  styles.contactActionBtn2,
+                  !isAccepted && styles.contactActionBtn2Disabled
+                ]} 
+                onPress={handleMessage} 
+                activeOpacity={isAccepted ? 0.8 : 0.5}
+                disabled={!isAccepted}
+              >
+                <MaterialIcons 
+                  name={isAccepted ? "message" : "lock"} 
+                  size={18} 
+                  color={isAccepted ? "#1B7332" : "#6c757d"} 
+                />
+                <Text style={[
+                  styles.contactActionText2,
+                  !isAccepted && styles.contactActionText2Disabled
+                ]}>
+                  {isAccepted ? "Message" : "Locked"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -241,24 +345,45 @@ const BookingDetailsScreen = ({ booking, onBack, onAccept, onReject }: BookingDe
       <View style={styles.bottomActions}>
         <View style={styles.actionsSummary}>
           <View style={styles.summaryHeader}>
-            <MaterialIcons name="assignment" size={22} color="#1B7332" />
-            <Text style={styles.summaryTitle}>Accept Booking Request</Text>
+            <MaterialIcons 
+              name={isAccepted ? "check-circle" : "assignment"} 
+              size={22} 
+              color={isAccepted ? "#28a745" : "#1B7332"} 
+            />
+            <Text style={[
+              styles.summaryTitle,
+              isAccepted && styles.summaryTitleAccepted
+            ]}>
+              {isAccepted ? "Booking Accepted!" : "Accept Booking Request"}
+            </Text>
           </View>
           <Text style={styles.summaryDescription}>
-            Review the details above and choose your action
+            {isAccepted 
+              ? "Contact information is now available. You can call or message the customer."
+              : "Review the details above and choose your action"
+            }
           </Text>
           
           {/* Action Buttons */}
-          <View style={styles.mainActions}>
-            <TouchableOpacity style={styles.rejectButton} onPress={onReject} activeOpacity={0.8}>
-              <MaterialIcons name="close" size={20} color="#dc3545" />
-              <Text style={styles.rejectButtonText}>Decline Booking</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.acceptButton} onPress={onAccept} activeOpacity={0.9}>
-              <MaterialIcons name="check-circle" size={20} color="white" />
-              <Text style={styles.acceptButtonText}>Accept Booking</Text>
-            </TouchableOpacity>
-          </View>
+          {!isAccepted ? (
+            <View style={styles.mainActions}>
+              <TouchableOpacity style={styles.rejectButton} onPress={onReject} activeOpacity={0.8}>
+                <MaterialIcons name="close" size={20} color="#dc3545" />
+                <Text style={styles.rejectButtonText}>Decline Booking</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.acceptButton} onPress={onAccept} activeOpacity={0.9}>
+                <MaterialIcons name="check-circle" size={20} color="white" />
+                <Text style={styles.acceptButtonText}>Accept Booking</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.mainActions}>
+              <TouchableOpacity style={styles.proceedButton} onPress={onAccept} activeOpacity={0.9}>
+                <MaterialIcons name="navigation" size={20} color="white" />
+                <Text style={styles.proceedButtonText}>Start Navigation</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -462,6 +587,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1B7332',
   },
+  privacyNotice: {
+    backgroundColor: '#f0f8ff',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 12,
+    marginVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(27, 115, 50, 0.2)',
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  privacyIcon: {
+    width: 36,
+    height: 36,
+    backgroundColor: '#E8F5E8',
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  privacyContent: {
+    flex: 1,
+  },
+  privacyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1B7332',
+    marginBottom: 4,
+  },
+  privacyText: {
+    fontSize: 12,
+    color: '#6c757d',
+    lineHeight: 16,
+  },
   card: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -508,6 +672,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6c757d',
     fontWeight: '500',
+  },
+  lockBadge: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(108, 117, 125, 0.2)',
   },
   cardContent: {
     padding: 16,
@@ -610,6 +784,21 @@ const styles = StyleSheet.create({
     color: '#1B7332',
     fontStyle: 'italic',
   },
+  contactItemLocked: {
+    backgroundColor: '#f8f9fa',
+    borderColor: 'rgba(108, 117, 125, 0.2)',
+  },
+  contactIconLocked: {
+    backgroundColor: '#f8f9fa',
+  },
+  contactValueHidden: {
+    color: '#6c757d',
+    fontFamily: 'monospace',
+  },
+  contactHintLocked: {
+    color: '#6c757d',
+    fontStyle: 'normal',
+  },
   customerMeta: {
     marginTop: 4,
   },
@@ -670,6 +859,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#1B7332',
+  },
+  contactActionBtnDisabled: {
+    backgroundColor: '#f8f9fa',
+    borderColor: 'rgba(108, 117, 125, 0.2)',
+  },
+  contactActionTextDisabled: {
+    color: '#6c757d',
+  },
+  contactActionBtn2Disabled: {
+    backgroundColor: '#f8f9fa',
+    borderColor: 'rgba(108, 117, 125, 0.2)',
+  },
+  contactActionText2Disabled: {
+    color: '#6c757d',
   },
   customerActions: {
     flexDirection: 'row',
@@ -879,6 +1082,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1B7332',
   },
+  summaryTitleAccepted: {
+    color: '#28a745',
+  },
   summaryDescription: {
     fontSize: 14,
     color: '#6c757d',
@@ -930,6 +1136,27 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   acceptButtonText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  proceedButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#28a745',
+    gap: 6,
+    shadowColor: '#28a745',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    minHeight: 50,
+  },
+  proceedButtonText: {
     fontSize: 15,
     fontWeight: 'bold',
     color: 'white',

@@ -5,7 +5,6 @@ import {
   TextInput, 
   TouchableOpacity, 
   StyleSheet, 
-  Alert, 
   ScrollView,
   ActivityIndicator,
   Dimensions,
@@ -17,7 +16,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../../hooks/useAuth';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 const isSmallScreen = height < 700;
 
 export default function LoginScreen() {
@@ -89,17 +88,7 @@ export default function LoginScreen() {
     }
   };
 
-  const formatPhoneDisplay = (value: string) => {
-    if (value.length <= 5) return value;
-    return `${value.slice(0, 5)} ${value.slice(5)}`;
-  };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
@@ -228,7 +217,7 @@ export default function LoginScreen() {
                   </View>
                 </View>
                 <Text style={[styles.trustNote, isSmallScreen && styles.trustNoteSmall]}>
-                  We'll send a secure OTP to verify your number
+                  We&apos;ll send a secure OTP to verify your number
                 </Text>
               </View>
             )}

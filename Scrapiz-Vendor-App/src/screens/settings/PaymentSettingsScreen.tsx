@@ -40,7 +40,7 @@ const PaymentSettingsScreen = ({ onBack }: PaymentSettingsScreenProps) => {
         }))
       );
       Alert.alert('Success', 'Default payment method updated!');
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to update default payment method.');
     } finally {
       setIsLoading(false);

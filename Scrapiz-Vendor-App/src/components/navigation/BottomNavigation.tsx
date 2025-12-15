@@ -10,8 +10,8 @@ interface BottomNavigationProps {
 const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
   const tabs = [
     { key: 'home', label: 'Home', icon: 'home' },
-    { key: 'earnings', label: 'Earnings', icon: 'currency-rupee' },
     { key: 'manage', label: 'Manage', icon: 'work' },
+    { key: 'earnings', label: 'Earnings', icon: 'currency-rupee' },
     { key: 'profile', label: 'Profile', icon: 'person' }
   ];
 

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
 interface ManageScreenProps {
@@ -11,26 +11,52 @@ const manageOptions = [
   {
     icon: "work",
     title: "Active Jobs",
-    action: "active-jobs"
+    subtitle: "View ongoing pickups",
+    action: "active-jobs-list",
+    color: "#1B7332"
   },
   {
     icon: "calendar-today",
-    title: "Schedule",
-    action: "future-requests"
-  },
-  {
-    icon: "trending-up",
-    title: "Earnings Report",
-    action: "earnings"
+    title: "Future Requests",
+    subtitle: "Scheduled pickups",
+    action: "future-requests",
+    color: "#FF9800"
   },
   {
     icon: "history",
     title: "Job History",
-    action: "history"
+    subtitle: "Completed jobs",
+    action: "history",
+    color: "#2196F3"
+  },
+  {
+    icon: "trending-up",
+    title: "Earnings Report",
+    subtitle: "View your earnings",
+    action: "earnings",
+    color: "#4CAF50"
   }
 ];
 
 const ManageScreen = ({ onBack, onNavigate }: ManageScreenProps) => {
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(50));
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
+
   const handleOptionPress = (action: string) => {
     try {
       if (typeof onNavigate === 'function' && action) {
@@ -45,35 +71,83 @@ const ManageScreen = ({ onBack, onNavigate }: ManageScreenProps) => {
 
   return (
     <View style={styles.container}>
-      {/* Simple Header */}
+      {/* Enhanced Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialIcons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Manage</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>🛠️ Manage</Text>
+          <Text style={styles.headerSubtitle}>Control your business operations</Text>
+        </View>
         <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          {/* Simple Options List */}
+        <Animated.View 
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          {/* Quick Stats */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <MaterialIcons name="work" size={20} color="#1B7332" />
+              <Text style={styles.statValue}>2</Text>
+              <Text style={styles.statLabel}>Active Jobs</Text>
+            </View>
+            <View style={styles.statCard}>
+              <MaterialIcons name="schedule" size={20} color="#FF9800" />
+              <Text style={styles.statValue}>4</Text>
+              <Text style={styles.statLabel}>Scheduled</Text>
+            </View>
+            <View style={styles.statCard}>
+              <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
+              <Text style={styles.statValue}>15</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+          </View>
+
+          {/* Enhanced Options List */}
           <View style={styles.optionsContainer}>
-            {manageOptions.map((option) => (
-              <TouchableOpacity
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            {manageOptions.map((option, index) => (
+              <Animated.View
                 key={option.action}
-                style={styles.optionCard}
-                onPress={() => handleOptionPress(option.action)}
-                activeOpacity={0.7}
+                style={{
+                  opacity: fadeAnim,
+                  transform: [{ 
+                    translateY: slideAnim.interpolate({
+                      inputRange: [0, 50],
+                      outputRange: [0, 50 + (index * 10)]
+                    })
+                  }]
+                }}
               >
-                <View style={styles.optionIcon}>
-                  <MaterialIcons name={option.icon as any} size={24} color="#1B7332" />
-                </View>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <MaterialIcons name="chevron-right" size={20} color="#bdc3c7" />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.optionCard}
+                  onPress={() => handleOptionPress(option.action)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.optionIcon, { backgroundColor: option.color + '20' }]}>
+                    <MaterialIcons name={option.icon as any} size={24} color={option.color} />
+                  </View>
+                  <View style={styles.optionContent}>
+                    <Text style={styles.optionTitle}>{option.title}</Text>
+                    <Text style={styles.optionSubtitle}>{option.subtitle}</Text>
+                  </View>
+                  <View style={styles.optionArrow}>
+                    <MaterialIcons name="chevron-right" size={24} color="#bdc3c7" />
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
             ))}
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -94,21 +168,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#1B7332',
     paddingHorizontal: 16,
     paddingTop: 44,
-    paddingBottom: 16,
+    paddingBottom: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   backButton: {
     padding: 8,
     borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-    flex: 1,
-    textAlign: 'center',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   headerSpacer: {
     width: 40,
@@ -116,37 +203,83 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
+  statsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#6c757d',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+  },
   optionsContainer: {
     gap: 12,
   },
   optionCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderColor: 'rgba(27, 115, 50, 0.1)',
   },
   optionIcon: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#E8F5E8',
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
+  optionContent: {
+    flex: 1,
+  },
   optionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#333',
-    flex: 1,
+    marginBottom: 4,
+  },
+  optionSubtitle: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  optionArrow: {
+    padding: 4,
   },
 });
 

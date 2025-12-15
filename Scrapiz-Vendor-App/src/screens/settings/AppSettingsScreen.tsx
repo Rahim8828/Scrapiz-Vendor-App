@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { creditNotificationService, NotificationPreferences } from '../../services/creditNotificationService';
 
 interface AppSettingsScreenProps {
   onBack: () => void;
@@ -17,12 +18,42 @@ const AppSettingsScreen = ({ onBack, onShowToast }: AppSettingsScreenProps) => {
     soundEffects: true,
   });
 
+  const [creditNotifications, setCreditNotifications] = useState<NotificationPreferences>({
+    lowBalanceEnabled: true,
+    criticalBalanceEnabled: true,
+    rechargeSuccessEnabled: true,
+    insufficientCreditEnabled: true,
+    lowBalanceThreshold: 10,
+    criticalBalanceThreshold: 0,
+  });
+
+  // Load notification preferences on component mount
+  useEffect(() => {
+    const loadPreferences = () => {
+      const preferences = creditNotificationService.getPreferences();
+      setCreditNotifications(preferences);
+    };
+    loadPreferences();
+  }, []);
+
   const handleToggle = (setting: keyof typeof settings, label: string) => {
     setSettings(prev => ({
       ...prev,
       [setting]: !prev[setting]
     }));
     onShowToast(`${label} ${!settings[setting] ? 'enabled' : 'disabled'}`, 'success');
+  };
+
+  const handleCreditNotificationToggle = (setting: keyof NotificationPreferences, label: string) => {
+    const newValue = !creditNotifications[setting];
+    const updatedPreferences = {
+      ...creditNotifications,
+      [setting]: newValue
+    };
+    
+    setCreditNotifications(updatedPreferences);
+    creditNotificationService.updatePreferences(updatedPreferences);
+    onShowToast(`${label} ${newValue ? 'enabled' : 'disabled'}`, 'success');
   };
 
   const settingsOptions = [
@@ -32,6 +63,33 @@ const AppSettingsScreen = ({ onBack, onShowToast }: AppSettingsScreenProps) => {
     { key: 'offlineMode', label: 'Offline Mode', icon: 'wifi-off', description: 'Enable offline functionality' },
     { key: 'hapticFeedback', label: 'Haptic Feedback', icon: 'vibration', description: 'Vibrate on interactions' },
     { key: 'soundEffects', label: 'Sound Effects', icon: 'volume-up', description: 'Play interaction sounds' },
+  ];
+
+  const creditNotificationOptions = [
+    { 
+      key: 'lowBalanceEnabled', 
+      label: 'Low Balance Alerts', 
+      icon: 'battery-alert', 
+      description: 'Notify when credits are below 10' 
+    },
+    { 
+      key: 'criticalBalanceEnabled', 
+      label: 'Critical Balance Alerts', 
+      icon: 'warning', 
+      description: 'Notify when credits reach zero' 
+    },
+    { 
+      key: 'rechargeSuccessEnabled', 
+      label: 'Recharge Confirmations', 
+      icon: 'check-circle', 
+      description: 'Confirm successful credit purchases' 
+    },
+    { 
+      key: 'insufficientCreditEnabled', 
+      label: 'Booking Credit Warnings', 
+      icon: 'error', 
+      description: 'Warn when insufficient credits for booking' 
+    },
   ];
 
   return (
@@ -47,7 +105,7 @@ const AppSettingsScreen = ({ onBack, onShowToast }: AppSettingsScreenProps) => {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.settingsCard}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={styles.sectionTitle}>General Preferences</Text>
           {settingsOptions.map((option) => (
             <View key={option.key} style={styles.settingItem}>
               <View style={styles.settingInfo}>
@@ -62,6 +120,27 @@ const AppSettingsScreen = ({ onBack, onShowToast }: AppSettingsScreenProps) => {
                 onValueChange={() => handleToggle(option.key as keyof typeof settings, option.label)}
                 trackColor={{ false: '#e9ecef', true: '#1B7332' }}
                 thumbColor={settings[option.key as keyof typeof settings] ? '#fff' : '#f4f3f4'}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.settingsCard}>
+          <Text style={styles.sectionTitle}>Credit Notifications</Text>
+          {creditNotificationOptions.map((option) => (
+            <View key={option.key} style={styles.settingItem}>
+              <View style={styles.settingInfo}>
+                <MaterialIcons name={option.icon as any} size={24} color="#1B7332" />
+                <View style={styles.settingText}>
+                  <Text style={styles.settingLabel}>{option.label}</Text>
+                  <Text style={styles.settingDescription}>{option.description}</Text>
+                </View>
+              </View>
+              <Switch
+                value={creditNotifications[option.key as keyof NotificationPreferences] as boolean}
+                onValueChange={() => handleCreditNotificationToggle(option.key as keyof NotificationPreferences, option.label)}
+                trackColor={{ false: '#e9ecef', true: '#1B7332' }}
+                thumbColor={creditNotifications[option.key as keyof NotificationPreferences] ? '#fff' : '#f4f3f4'}
               />
             </View>
           ))}

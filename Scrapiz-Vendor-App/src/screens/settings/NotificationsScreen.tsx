@@ -62,7 +62,7 @@ const NotificationsScreen = ({ onBack }: NotificationsScreenProps) => {
         ...prev,
         [key]: !prev[key as keyof typeof prev]
       }));
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to update notification settings.');
     } finally {
       setIsSaving(false);

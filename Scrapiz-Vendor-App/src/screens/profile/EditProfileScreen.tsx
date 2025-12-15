@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -44,7 +44,7 @@ const EditProfileScreen = ({ onBack, onShowToast }: EditProfileScreenProps) => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       onShowToast('Profile updated successfully!', 'success');
       onBack(); // Go back after successful save
-    } catch (error) {
+    } catch {
       onShowToast('Failed to update profile. Please try again.', 'error');
     } finally {
       setIsLoading(false);

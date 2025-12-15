@@ -10,11 +10,30 @@ export * from './components/navigation';
 export * from './components/common';
 export * from './components/ui';
 
-// Types
-export * from './types';
+// Types (export types and interfaces)
+export type {
+  User,
+  BookingRequest,
+  ScrapItem,
+  Transaction,
+  EarningsData,
+  Vehicle,
+  PickupUnit,
+  FutureRequest,
+  Material,
+  Contact,
+  CreditTransaction,
+  CreditBalanceData,
+  CreditPackage,
+  TransactionFilter,
+  PaymentResult,
+  PaymentMethod,
+  CreditService as ICreditService,
+  PaymentService as IPaymentService
+} from './types';
 
 // Utils
 export * from './utils';
 
-// Services
+// Services (export service implementations)
 export * from './services';

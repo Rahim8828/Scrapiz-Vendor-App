@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -35,7 +35,7 @@ const toastConfig = {
 };
 
 const Toast = ({ message, type, isVisible, onClose, duration = 4000 }: ToastProps) => {
-  const fadeAnim = new Animated.Value(0);
+  const fadeAnim = useMemo(() => new Animated.Value(0), []);
 
   useEffect(() => {
     if (isVisible) {
@@ -62,7 +62,7 @@ const Toast = ({ message, type, isVisible, onClose, duration = 4000 }: ToastProp
         useNativeDriver: true,
       }).start();
     }
-  }, [isVisible, duration, onClose]);
+  }, [isVisible, duration, onClose, fadeAnim]);
 
   if (!isVisible) return null;
 

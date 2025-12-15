@@ -63,7 +63,7 @@ const PersonalInfoScreen = ({ onBack }: PersonalInfoScreenProps) => {
       Alert.alert('Success', 'Personal information updated successfully!');
       setIsEditing(false);
       setErrors({});
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to update information. Please try again.');
     } finally {
       setIsSaving(false);

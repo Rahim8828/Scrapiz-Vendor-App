@@ -87,3 +87,72 @@ export interface Contact {
   lastContact: Date;
   avatarUrl?: string;
 }
+
+// Credit System Types
+
+export interface CreditTransaction {
+  id: string;
+  type: 'deduction' | 'addition' | 'penalty';
+  amount: number; // Credits
+  description: string;
+  timestamp: Date;
+  bookingId?: string;
+  customerName?: string;
+  orderValue?: number;
+  paymentAmount?: number; // Rupees
+  paymentTransactionId?: string;
+  status: 'completed' | 'pending' | 'failed';
+  metadata?: {
+    [key: string]: any;
+  };
+}
+
+export interface CreditBalanceData {
+  vendorId: string;
+  currentBalance: number;
+  lastUpdated: Date;
+  pendingTransactions: string[];
+  syncStatus: 'synced' | 'pending' | 'error';
+}
+
+export interface CreditPackage {
+  id: string;
+  credits: number;
+  price: number; // In rupees
+  bonus?: number; // Bonus credits
+  popular?: boolean;
+  description: string;
+}
+
+export type TransactionFilter = 'all' | 'recharges' | 'expenses' | 'penalties';
+
+export interface PaymentResult {
+  success: boolean;
+  transactionId?: string;
+  error?: string;
+  amount?: number;
+}
+
+export interface PaymentMethod {
+  id: string;
+  name: string;
+  type: 'card' | 'upi' | 'wallet' | 'netbanking';
+  isDefault?: boolean;
+}
+
+// Credit System Service Interfaces
+
+export interface CreditService {
+  getCurrentBalance(): Promise<number>;
+  deductCredits(amount: number, bookingId: string, orderValue: number): Promise<boolean>;
+  addCredits(amount: number, transactionId: string, paymentAmount: number): Promise<void>;
+  getTransactionHistory(filter?: TransactionFilter): Promise<CreditTransaction[]>;
+  syncWithServer(): Promise<void>;
+  calculateRequiredCredits(orderValue: number): number;
+}
+
+export interface PaymentService {
+  initiatePayment(amount: number, credits: number): Promise<PaymentResult>;
+  verifyPayment(transactionId: string): Promise<boolean>;
+  getPaymentMethods(): Promise<PaymentMethod[]>;
+}

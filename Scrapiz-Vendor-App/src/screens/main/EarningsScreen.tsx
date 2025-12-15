@@ -7,14 +7,12 @@ import {
   ScrollView, 
   ActivityIndicator,
   Alert,
-  Animated,
-  RefreshControl,
-  Dimensions
+  RefreshControl
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { EarningsData } from '../../types';
 
-const { width: screenWidth } = Dimensions.get('window');
+
 
 interface EarningsScreenProps {
   onBack: () => void;
@@ -25,7 +23,7 @@ const EarningsScreen = ({ onBack }: EarningsScreenProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [animatedValue] = useState(new Animated.Value(0));
+
 
   React.useEffect(() => {
     let isMounted = true; // Flag to prevent state updates if component unmounts
@@ -180,58 +178,13 @@ const EarningsScreen = ({ onBack }: EarningsScreenProps) => {
 
 
 
-  // Enhanced Header Component
-  const EnhancedHeader = () => (
-    <View style={styles.modernHeader}>
-      <View style={styles.headerContent}>
-        <View style={styles.earningsSummary}>
-          <Text style={styles.periodLabel}>{activeTab.toUpperCase()}</Text>
-          <Text style={styles.mainAmount}>₹{currentData.totalEarnings.toLocaleString()}</Text>
-          <View style={styles.quickStats}>
-            <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{currentData.totalJobs}</Text>
-              <Text style={styles.quickStatLabel}>Jobs</Text>
-            </View>
-            <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>+{earningsStats.growthRate}%</Text>
-              <Text style={styles.quickStatLabel}>Growth</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-      <ModernTabSelector />
-    </View>
-  );
 
 
 
 
 
-  // Modern Tab Selector Component
-  const ModernTabSelector = () => (
-    <View style={styles.modernTabContainer}>
-      {tabs.map((tab) => (
-        <TouchableOpacity
-          key={tab.key}
-          onPress={() => setActiveTab(tab.key)}
-          disabled={isLoading}
-          style={[
-            styles.modernTab,
-            activeTab === tab.key && styles.activeModernTab
-          ]}
-          activeOpacity={0.8}
-        >
-          <Text style={[
-            styles.modernTabText,
-            activeTab === tab.key && styles.activeModernTabText
-          ]}>
-            {tab.label}
-          </Text>
-          {activeTab === tab.key && <View style={styles.tabIndicator} />}
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+
+
 
   // Swipeable Transaction Card Component
   const SwipeableTransactionCard = ({ transaction, onSwipeLeft }: any) => (
@@ -264,21 +217,19 @@ const EarningsScreen = ({ onBack }: EarningsScreenProps) => {
 
   // Enhanced Transaction List Component
   const EnhancedTransactionList = () => {
-    const groupedTransactions = useMemo(() => {
-      const groups: { [key: string]: any[] } = {};
-      currentData.transactions.forEach(transaction => {
-        const dateKey = formatDate(transaction.date);
-        if (!groups[dateKey]) {
-          groups[dateKey] = [];
-        }
-        groups[dateKey].push(transaction);
-      });
-      
-      return Object.entries(groups).map(([date, transactions]) => ({
-        date,
-        transactions
-      }));
-    }, [currentData.transactions]);
+    const groups: { [key: string]: any[] } = {};
+    currentData.transactions.forEach(transaction => {
+      const dateKey = formatDate(transaction.date);
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(transaction);
+    });
+    
+    const groupedTransactions = Object.entries(groups).map(([date, transactions]) => ({
+      date,
+      transactions
+    }));
 
     return (
       <View style={styles.modernTransactionList}>

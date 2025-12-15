@@ -44,7 +44,7 @@ const VehicleDetailsScreen = ({ onBack }: VehicleDetailsScreenProps) => {
         'Status Updated',
         `Vehicle is now ${!vehicleStatus ? 'Online' : 'Offline'}`
       );
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to update vehicle status. Please try again.');
     } finally {
       setIsLoading(false);

@@ -27,7 +27,7 @@ const AboutScreen = ({ onBack }: AboutScreenProps) => {
       } else {
         Alert.alert('Error', 'Unable to open privacy policy');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to open privacy policy');
     }
   };
@@ -41,7 +41,7 @@ const AboutScreen = ({ onBack }: AboutScreenProps) => {
       } else {
         Alert.alert('Error', 'Unable to open terms of service');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to open terms of service');
     }
   };
@@ -55,7 +55,7 @@ const AboutScreen = ({ onBack }: AboutScreenProps) => {
       } else {
         Alert.alert('Error', 'Unable to open website');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to open website');
     }
   };

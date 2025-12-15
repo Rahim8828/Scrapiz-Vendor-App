@@ -63,7 +63,7 @@ const HelpSupportScreen = ({ onBack }: HelpSupportScreenProps) => {
       } else {
         Alert.alert('Error', 'Phone calls are not supported on this device');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to make phone call');
     }
   };
@@ -80,7 +80,7 @@ const HelpSupportScreen = ({ onBack }: HelpSupportScreenProps) => {
       } else {
         Alert.alert('Error', 'WhatsApp is not installed on your device');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to open WhatsApp');
     }
   };
@@ -113,7 +113,7 @@ const HelpSupportScreen = ({ onBack }: HelpSupportScreenProps) => {
       } else {
         Alert.alert('Error', 'Unable to open website');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to open website');
     }
   };
@@ -127,7 +127,7 @@ const HelpSupportScreen = ({ onBack }: HelpSupportScreenProps) => {
       } else {
         Alert.alert('Error', 'Unable to open community forum');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to open community forum');
     }
   };
@@ -141,7 +141,7 @@ const HelpSupportScreen = ({ onBack }: HelpSupportScreenProps) => {
       } else {
         Alert.alert('Error', 'Phone calls are not supported on this device');
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Unable to make emergency call');
     }
   };

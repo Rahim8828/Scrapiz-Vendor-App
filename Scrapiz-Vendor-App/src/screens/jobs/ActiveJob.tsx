@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ScrollView, 
+  Linking, 
+  Animated
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ActiveJob as ActiveJobType } from '../../types';
 
@@ -14,37 +22,88 @@ interface ActiveJobProps {
 const ActiveJob = ({ job, onStatusUpdate, onCompleteJob, onBack, onShowToast }: ActiveJobProps) => {
   const [currentStatus, setCurrentStatus] = useState<ActiveJobType['status']>(job.status || 'on-the-way');
   const [isLoading, setIsLoading] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [slideAnim] = useState(new Animated.Value(30));
 
-  const statusTimeline = [
-    { value: 'on-the-way', label: 'On the Way' },
-    { value: 'arrived', label: 'Arrived' },
-    { value: 'in-progress', label: 'Weighing' },
-    { value: 'completed', label: 'Completed' },
+  const statusSteps = [
+    { 
+      value: 'on-the-way', 
+      label: 'On the Way', 
+      icon: 'directions-car',
+      description: 'Heading to pickup location'
+    },
+    { 
+      value: 'arrived', 
+      label: 'Arrived', 
+      icon: 'location-on',
+      description: 'Reached customer location'
+    },
+    { 
+      value: 'in-progress', 
+      label: 'Collecting', 
+      icon: 'inventory',
+      description: 'Weighing and collecting scrap'
+    },
+    { 
+      value: 'completed', 
+      label: 'Ready', 
+      icon: 'check-circle',
+      description: 'Ready for completion'
+    },
   ];
 
-  const currentStatusIndex = statusTimeline.findIndex(s => s.value === currentStatus);
+  const currentStatusIndex = statusSteps.findIndex(s => s.value === currentStatus);
+  const currentStep = statusSteps[currentStatusIndex];
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, []);
 
   const handleStatusChange = async (status: ActiveJobType['status']) => {
+    if (isLoading) return;
+    
     try {
       setIsLoading(true);
       setCurrentStatus(status);
       onStatusUpdate(status);
-      const statusLabel = statusTimeline.find(s => s.value === status)?.label;
-      onShowToast(`Status updated to: ${statusLabel}!`, 'success');
+      const statusLabel = statusSteps.find(s => s.value === status)?.label;
+      onShowToast(`✅ ${statusLabel}!`, 'success');
     } catch (error) {
       console.error('Error updating status:', error);
-      onShowToast('Failed to update status. Please try again.', 'error');
+      onShowToast('❌ Failed to update status', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const getNextAction = () => {
+    const nextIndex = currentStatusIndex + 1;
+    if (nextIndex < statusSteps.length) {
+      return statusSteps[nextIndex];
+    }
+    return null;
+  };
+
+  const nextAction = getNextAction();
+
   const handleCall = () => {
     try {
       Linking.openURL(`tel:${job.customerPhone}`);
+      onShowToast('📞 Calling customer...', 'info');
     } catch (error) {
       console.error('Error making call:', error);
-      onShowToast('Unable to make call. Please try again.', 'error');
+      onShowToast('❌ Unable to make call', 'error');
     }
   };
 
@@ -52,129 +111,154 @@ const ActiveJob = ({ job, onStatusUpdate, onCompleteJob, onBack, onShowToast }: 
     try {
       const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(job.address)}`;
       Linking.openURL(url);
+      onShowToast('🗺️ Opening navigation...', 'info');
     } catch (error) {
       console.error('Error opening navigation:', error);
-      onShowToast('Unable to open navigation. Please try again.', 'error');
+      onShowToast('❌ Unable to open navigation', 'error');
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Minimal Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <MaterialIcons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Job #{job.id}</Text>
-        <View style={styles.headerSpacer} />
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Active Job</Text>
+          <Text style={styles.headerSubtitle}>#{job.id}</Text>
+        </View>
+        <View style={styles.statusBadge}>
+          <MaterialIcons name={currentStep?.icon as any} size={16} color="white" />
+        </View>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        {/* Map & Actions */}
-        <View style={styles.mapCard}>
-          <View style={styles.mapSection}>
-            <MaterialIcons name="location-on" size={48} color="rgba(255,255,255,0.5)" />
-            <View style={styles.mapContent}>
-              <Text style={styles.distanceText}>{job.distance} away</Text>
-              <Text style={styles.addressText}>{job.address}</Text>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Current Status Card */}
+        <Animated.View 
+          style={[
+            styles.currentStatusCard,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.statusHeader}>
+            <View style={styles.statusIcon}>
+              <MaterialIcons name={currentStep?.icon as any} size={32} color="#1B7332" />
+            </View>
+            <View style={styles.statusInfo}>
+              <Text style={styles.currentStatusLabel}>{currentStep?.label}</Text>
+              <Text style={styles.currentStatusDescription}>{currentStep?.description}</Text>
             </View>
           </View>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-              <MaterialIcons name="phone" size={20} color="#28a745" />
-              <Text style={styles.actionButtonText}>Call Customer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.primaryAction]} onPress={handleNavigate}>
-              <MaterialIcons name="navigation" size={20} color="#28a745" />
-              <Text style={styles.actionButtonText}>Navigate</Text>
-            </TouchableOpacity>
+          
+          {/* Progress Bar */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${((currentStatusIndex + 1) / statusSteps.length) * 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.progressText}>
+              {currentStatusIndex + 1} of {statusSteps.length}
+            </Text>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Customer & Job Info */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <MaterialIcons name="person" size={20} color="#28a745" />
+        {/* Customer Info Card */}
+        <Animated.View 
+          style={[
+            styles.customerCard,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <View style={styles.customerHeader}>
+            <View style={styles.customerAvatar}>
+              <MaterialIcons name="person" size={24} color="#1B7332" />
             </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Customer</Text>
-              <Text style={styles.infoValue}>{job.customerName}</Text>
+            <View style={styles.customerInfo}>
+              <Text style={styles.customerName}>{job.customerName}</Text>
+              <Text style={styles.customerPhone}>{job.customerPhone}</Text>
+            </View>
+            <TouchableOpacity style={styles.callButton} onPress={handleCall}>
+              <MaterialIcons name="phone" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.locationContainer}>
+            <MaterialIcons name="location-on" size={16} color="#1B7332" />
+            <Text style={styles.locationText}>{job.address}</Text>
+          </View>
+          
+          <View style={styles.jobDetails}>
+            <View style={styles.detailItem}>
+              <MaterialIcons name="category" size={16} color="#6c757d" />
+              <Text style={styles.detailText}>{job.scrapType}</Text>
+            </View>
+            <View style={styles.detailItem}>
+              <MaterialIcons name="navigation" size={16} color="#6c757d" />
+              <Text style={styles.detailText}>{job.distance}</Text>
             </View>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <MaterialIcons name="local-offer" size={20} color="#28a745" />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Scrap Type</Text>
-              <Text style={styles.infoValue}>{job.scrapType}</Text>
-            </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.infoRow}>
-            <View style={styles.infoIcon}>
-              <MaterialIcons name="phone" size={20} color="#28a745" />
-            </View>
-            <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Phone</Text>
-              <Text style={styles.infoValue}>{job.customerPhone}</Text>
-            </View>
-          </View>
-        </View>
+        </Animated.View>
 
-        {/* Status Timeline */}
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Job Progress</Text>
-          <View style={styles.statusTimeline}>
-            {statusTimeline.map((status, index) => (
-              <View key={status.value} style={styles.statusItem}>
-                <View style={[
-                  styles.statusIndicator,
-                  index <= currentStatusIndex ? styles.statusActive : styles.statusInactive
-                ]}>
-                  {index < currentStatusIndex ? (
-                    <MaterialIcons name="check" size={16} color="white" />
-                  ) : (
-                    <View style={[
-                      styles.statusDot,
-                      index === currentStatusIndex ? styles.statusCurrentDot : styles.statusInactiveDot
-                    ]} />
-                  )}
-                </View>
-                <TouchableOpacity 
-                  style={styles.statusButton}
-                  onPress={() => handleStatusChange(status.value as any)}
-                  disabled={index < currentStatusIndex || isLoading}
-                >
-                  <Text style={[
-                    styles.statusText,
-                    index <= currentStatusIndex ? styles.statusActiveText : styles.statusInactiveText,
-                    index < currentStatusIndex ? styles.statusCompletedText : {}
-                  ]}>
-                    {status.label}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        </View>
+        {/* Quick Actions */}
+        <Animated.View 
+          style={[
+            styles.actionsCard,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
+        >
+          <TouchableOpacity style={styles.navigationButton} onPress={handleNavigate}>
+            <MaterialIcons name="navigation" size={24} color="white" />
+            <Text style={styles.navigationButtonText}>Open Navigation</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <View style={styles.floatingButton}>
-        <TouchableOpacity
-          style={[
-            styles.completeButton,
-            (currentStatus !== 'completed' || isLoading) ? styles.completeButtonDisabled : {}
-          ]}
-          onPress={onCompleteJob}
-          disabled={currentStatus !== 'completed' || isLoading}
-        >
-          <MaterialIcons name="check-circle" size={20} color="white" />
-          <Text style={styles.completeButtonText}>Proceed to Weight Entry</Text>
-        </TouchableOpacity>
+      {/* Bottom Action Button */}
+      <View style={styles.bottomContainer}>
+        {nextAction ? (
+          <TouchableOpacity
+            style={[styles.nextButton, isLoading && styles.nextButtonDisabled]}
+            onPress={() => handleStatusChange(nextAction.value as any)}
+            disabled={isLoading}
+          >
+            <MaterialIcons 
+              name={isLoading ? "hourglass-empty" : nextAction.icon as any} 
+              size={20} 
+              color="white" 
+            />
+            <Text style={styles.nextButtonText}>
+              {isLoading ? 'Updating...' : `Mark as ${nextAction.label}`}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.completeButton, isLoading && styles.completeButtonDisabled]}
+            onPress={onCompleteJob}
+            disabled={isLoading}
+          >
+            <MaterialIcons name="check-circle" size={20} color="white" />
+            <Text style={styles.completeButtonText}>Complete Job</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -183,229 +267,301 @@ const ActiveJob = ({ job, onStatusUpdate, onCompleteJob, onBack, onShowToast }: 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#f8f9fa',
   },
+  // Minimal Header
   header: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#1B7332',
     paddingTop: 44,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   backButton: {
     padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  headerContent: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
+    marginBottom: 2,
   },
-  headerSpacer: {
-    width: 40,
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
+  statusBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Content
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 100,
   },
-  mapCard: {
+  
+  // Current Status Card
+  currentStatusCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: 'hidden',
+    shadowRadius: 12,
+    elevation: 8,
   },
-  mapSection: {
-    backgroundColor: '#28a745',
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  mapContent: {
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  distanceText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 4,
-  },
-  addressText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-  },
-  actionButton: {
-    flex: 1,
+  statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
-    backgroundColor: 'white',
-  },
-  primaryAction: {
-    backgroundColor: '#E8F5E8',
-    borderLeftWidth: 1,
-    borderLeftColor: '#e9ecef',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#28a745',
-  },
-  infoCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  infoIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#E8F5E8',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#f8f9fa',
-    marginVertical: 4,
-  },
-  statusCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
     marginBottom: 20,
   },
-  statusTimeline: {
-    gap: 16,
-  },
-  statusItem: {
-    flexDirection: 'row',
+  statusIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(27, 115, 50, 0.1)',
     alignItems: 'center',
-    gap: 16,
-  },
-  statusIndicator: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'center',
+    marginRight: 16,
   },
-  statusActive: {
-    backgroundColor: '#28a745',
-  },
-  statusInactive: {
-    backgroundColor: '#e9ecef',
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  statusCurrentDot: {
-    backgroundColor: 'white',
-  },
-  statusInactiveDot: {
-    backgroundColor: '#6c757d',
-  },
-  statusButton: {
+  statusInfo: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
   },
-  statusText: {
-    fontSize: 16,
+  currentStatusLabel: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  currentStatusDescription: {
+    fontSize: 14,
+    color: '#6c757d',
+    lineHeight: 20,
+  },
+  
+  // Progress Bar
+  progressContainer: {
+    marginTop: 8,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#1B7332',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6c757d',
+    textAlign: 'center',
     fontWeight: '600',
   },
-  statusActiveText: {
+  
+  // Customer Card
+  customerCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  customerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  customerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(27, 115, 50, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerName: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
   },
-  statusInactiveText: {
+  customerPhone: {
+    fontSize: 14,
     color: '#6c757d',
+    fontWeight: '500',
   },
-  statusCompletedText: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
+  callButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1B7332',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderTopWidth: 1,
-    borderTopColor: '#e9ecef',
+  
+  // Location
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
   },
-  completeButton: {
-    backgroundColor: '#28a745',
+  locationText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    lineHeight: 20,
+  },
+  
+  // Job Details
+  jobDetails: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  detailItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 13,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  
+  // Actions Card
+  actionsCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  navigationButton: {
+    backgroundColor: '#1B7332',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#28a745',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  navigationButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  
+  // Bottom Container
+  bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    padding: 20,
+    paddingBottom: 34, // Safe area
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  nextButton: {
+    backgroundColor: '#1B7332',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#1B7332',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#6c757d',
+    shadowColor: '#6c757d',
+  },
+  nextButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  completeButton: {
+    backgroundColor: '#FF9800',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#FF9800',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   completeButtonDisabled: {
     backgroundColor: '#6c757d',
+    shadowColor: '#6c757d',
   },
   completeButtonText: {
     color: 'white',

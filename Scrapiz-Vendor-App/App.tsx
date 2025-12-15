@@ -32,6 +32,9 @@ import {
   ActiveJob, 
   JobCompletion 
 } from './src/screens/jobs';
+
+// Credit Screens
+import { CreditScreen } from './src/screens/credit';
 // Navigation & Common Components
 import { BottomNavigation } from './src/components/navigation';
 import { ErrorBoundary } from './src/components/common';
@@ -43,6 +46,7 @@ const AppContent = () => {
   const [selectedBooking, setSelectedBooking] = useState<BookingRequest | null>(null);
   const [showJobCompletion, setShowJobCompletion] = useState(false);
   const [activeJob, setActiveJob] = useState<ActiveJobType | null>(null);
+  const [isBookingAccepted, setIsBookingAccepted] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     Alert.alert(
@@ -53,6 +57,7 @@ const AppContent = () => {
 
   const handleBookingSelect = (booking: BookingRequest) => {
     setSelectedBooking(booking);
+    setIsBookingAccepted(false); // Reset acceptance state for new booking
     setActiveTab('booking-details');
   };
 
@@ -64,6 +69,7 @@ const AppContent = () => {
     setActiveTab('home');
     setSelectedBooking(null);
     setShowJobCompletion(false);
+    setIsBookingAccepted(false); // Reset acceptance state
   };
 
   const handleBackToManage = () => {
@@ -113,8 +119,29 @@ const AppContent = () => {
       // Manage tab sub-screens
       case 'history':
         return <JobHistoryScreen onBack={handleBackToManage} />;
-      case 'active-jobs':
-        return <JobHistoryScreen onBack={handleBackToManage} />;
+      case 'active-jobs-list':
+        return <ActiveJob 
+          job={{
+            id: 'active-1',
+            scrapType: 'Mixed Scrap',
+            distance: '2.5 km',
+            customerName: 'Active Customer',
+            customerPhone: '+91 98765 43210',
+            address: 'Active Job Location',
+            paymentMode: 'Cash',
+            estimatedAmount: 500,
+            createdAt: new Date(),
+            status: 'on-the-way',
+            customerLocation: { lat: 19.0760, lng: 72.8777 }
+          }}
+          onStatusUpdate={(status) => console.log('Status updated:', status)}
+          onCompleteJob={() => {
+            showToast('Job completed!', 'success');
+            handleBackToManage();
+          }}
+          onBack={handleBackToManage}
+          onShowToast={showToast}
+        />;
       case 'future-requests':
         return <FutureRequestsScreen onBack={handleBackToManage} />;
 
@@ -123,7 +150,9 @@ const AppContent = () => {
           <BookingDetailsScreen
             booking={selectedBooking}
             onBack={handleBackToHome}
+            isAccepted={isBookingAccepted}
             onAccept={() => {
+              setIsBookingAccepted(true); // Mark booking as accepted
               // Convert booking to active job
               const newActiveJob: ActiveJobType = {
                 ...selectedBooking,
@@ -211,6 +240,13 @@ const AppContent = () => {
           <MoreMenuScreen
             onBack={handleBackToProfile}
             onNavigate={handleNavigate}
+          />
+        );
+      case 'credit':
+        return (
+          <CreditScreen
+            onBack={handleBackToHome}
+            onShowToast={showToast}
           />
         );
       default:
