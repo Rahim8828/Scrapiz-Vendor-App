@@ -27,8 +27,7 @@ const BottomNavigation = ({ activeTab, onTabChange, jobCounts }: BottomNavigatio
     { 
       key: 'ongoing', 
       label: 'Manage', 
-      icon: 'work',
-      badge: (jobCounts?.active || 0) + (jobCounts?.pending || 0)
+      icon: 'work'
     },
     { key: 'earnings', label: 'Target', icon: 'trending-up' },
     { key: 'profile', label: 'Profile', icon: 'person' }

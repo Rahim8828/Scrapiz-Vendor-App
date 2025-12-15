@@ -76,7 +76,7 @@ function CreditBalance({ balance, onPress, showWarning }: CreditBalanceProps) {
       <View style={styles.addButton}>
         <MaterialIcons 
           name="add" 
-          size={10} 
+          size={12} 
           color={displayWarning ? '#dc3545' : 'white'} 
         />
       </View>
@@ -90,8 +90,9 @@ export default memo(CreditBalance);
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     shadowColor: '#000',
@@ -99,8 +100,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    width: 80,
-    height: 80,
+    minWidth: 70,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -113,16 +113,15 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    flex: 1,
+    gap: 4,
   },
   iconContainer: {
     position: 'relative',
-    width: 20,
-    height: 20,
+    width: 16,
+    height: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   warningIndicator: {
     position: 'absolute',
@@ -142,34 +141,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   balanceText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-    lineHeight: 18,
+    lineHeight: 20,
     textAlign: 'center',
   },
   warningText: {
     color: '#dc3545',
   },
   labelText: {
-    fontSize: 10,
+    fontSize: 11,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
-    lineHeight: 12,
+    lineHeight: 13,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 1,
   },
   warningLabelText: {
     color: 'rgba(220, 53, 69, 0.8)',
   },
   addButton: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 16,
-    height: 16,
+    top: 2,
+    right: 2,
+    width: 18,
+    height: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 8,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },

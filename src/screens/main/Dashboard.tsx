@@ -481,12 +481,6 @@ export default function Dashboard({ onBookingSelect, onShowToast, onNavigate }: 
                       { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                     ]}
                   >
-                    {/* More prominent priority indicator */}
-                    <View style={[
-                      styles.priorityStrip, 
-                      { backgroundColor: getPriorityColor(booking.priority || 'medium') }
-                    ]} />
-                    
                     {/* Simplified card header */}
                     <View style={styles.cardHeader}>
                       <View style={styles.leftSection}>
@@ -662,15 +656,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F9FC', // Content background
   },
   scrollContent: {
-    paddingBottom: 80, // Reduced for compact navigation
+    paddingBottom: 160, // Increased for proper scrolling clearance with bottom navigation and safe area
   },
   header: {
     backgroundColor: '#1B7332',
     paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingTop: 44,
+    paddingBottom: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     shadowColor: '#1B7332',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -682,7 +676,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   headerLeft: {
     flex: 1,
@@ -695,16 +689,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   greeting: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: 'white',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   userName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   readyText: {
     fontSize: 14,
@@ -734,7 +728,7 @@ const styles = StyleSheet.create({
   statusIconContainer: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -892,17 +886,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(27, 115, 50, 0.08)',
   },
-  
-  // More prominent priority strip
-  priorityStrip: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 6, // Reduced from 8
-    borderTopLeftRadius: 16, // Match card radius
-    borderBottomLeftRadius: 16,
-  },
+
   
   // Simplified card structure
   cardHeader: {
@@ -910,7 +894,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: 12, // Reduced from 16
-    paddingLeft: 18, // Adjusted for smaller priority strip
     paddingBottom: 8, // Reduced from 12
   },
   

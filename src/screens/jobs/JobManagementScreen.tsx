@@ -380,10 +380,7 @@ const JobManagementScreen = ({ onBack }: JobManagementScreenProps) => {
           <Text style={styles.headerTitle}>Job Management</Text>
           <Text style={styles.headerSubtitle}>Track all your pickups</Text>
         </View>
-        <View style={styles.scoreContainer}>
-          <Text style={styles.scoreText}>25</Text>
-          <MaterialIcons name="star" size={16} color="white" />
-        </View>
+        <View style={styles.headerSpacer} />
       </View>
 
       {/* Enhanced Tab Navigation */}
@@ -397,41 +394,38 @@ const JobManagementScreen = ({ onBack }: JobManagementScreenProps) => {
                 activeTab === tab.key && styles.enhancedActiveTab
               ]}
               onPress={() => setActiveTab(tab.key as any)}
+              activeOpacity={0.7}
             >
-              <View style={styles.tabContent}>
-                <View style={styles.tabHeader}>
-                  <MaterialIcons 
-                    name={
-                      tab.key === 'upcoming' ? 'schedule' :
-                      tab.key === 'pending' ? 'hourglass-empty' :
-                      tab.key === 'followup' ? 'follow-the-signs' :
-                      tab.key === 'completed' ? 'check-circle' : 'cancel'
-                    }
-                    size={16} 
-                    color={activeTab === tab.key ? '#fff' : '#1B7332'} 
-                  />
-                  <Text style={[
-                    styles.enhancedTabText,
-                    activeTab === tab.key && styles.enhancedActiveTabText
+              <View style={styles.tabHeader}>
+                <MaterialIcons 
+                  name={
+                    tab.key === 'upcoming' ? 'schedule' :
+                    tab.key === 'pending' ? 'hourglass-empty' :
+                    tab.key === 'followup' ? 'follow-the-signs' :
+                    tab.key === 'completed' ? 'check-circle' : 'cancel'
+                  }
+                  size={14} 
+                  color={activeTab === tab.key ? '#fff' : '#1B7332'} 
+                />
+                <Text style={[
+                  styles.enhancedTabText,
+                  activeTab === tab.key && styles.enhancedActiveTabText
+                ]}>
+                  {tab.label}
+                </Text>
+                {tab.count > 0 && (
+                  <View style={[
+                    styles.enhancedTabBadge,
+                    activeTab === tab.key && styles.enhancedActiveTabBadge
                   ]}>
-                    {tab.label}
-                  </Text>
-                </View>
-                <View style={styles.tabMeta}>
-                  {tab.count > 0 && (
-                    <View style={[
-                      styles.enhancedTabBadge,
-                      activeTab === tab.key && styles.enhancedActiveTabBadge
+                    <Text style={[
+                      styles.enhancedTabBadgeText,
+                      activeTab === tab.key && styles.enhancedActiveTabBadgeText
                     ]}>
-                      <Text style={[
-                        styles.enhancedTabBadgeText,
-                        activeTab === tab.key && styles.enhancedActiveTabBadgeText
-                      ]}>
-                        {tab.count}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                      {tab.count}
+                    </Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           ))}
@@ -524,61 +518,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
   },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  scoreText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
+  headerSpacer: {
+    width: 40,
   },
   
   // Enhanced Tab Navigation
   enhancedTabContainer: {
     backgroundColor: 'white',
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 2,
   },
   
   tabScrollContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   
   enhancedTab: {
     backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 8,
-    minWidth: 80,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minWidth: 90,
     borderWidth: 1,
-    borderColor: 'rgba(27, 115, 50, 0.1)',
+    borderColor: 'rgba(27, 115, 50, 0.15)',
   },
   
   enhancedActiveTab: {
     backgroundColor: '#1B7332',
     borderColor: '#1B7332',
     shadowColor: '#1B7332',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  
-  tabContent: {
-    alignItems: 'center',
-    gap: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   
   tabHeader: {
@@ -588,8 +567,8 @@ const styles = StyleSheet.create({
   },
   
   enhancedTabText: {
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '600',
     color: '#1B7332',
   },
   
@@ -597,29 +576,25 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   
-  tabMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
+
   
   enhancedTabBadge: {
     backgroundColor: '#dc3545',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 6,
   },
   
   enhancedActiveTabBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   
   enhancedTabBadgeText: {
     color: 'white',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   
@@ -634,7 +609,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 12,
-    paddingBottom: 80,
+    paddingBottom: 160,
   },
   dateGroup: {
     marginBottom: 16,

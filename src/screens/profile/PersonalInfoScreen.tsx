@@ -94,7 +94,7 @@ const PersonalInfoScreen = ({ onBack }: PersonalInfoScreenProps) => {
   }) => (
     <View style={styles.fieldContainer}>
       <View style={styles.fieldHeader}>
-        <MaterialIcons name={icon as any} size={20} color="#28a745" />
+        <MaterialIcons name={icon as any} size={20} color="#1B7332" />
         <Text style={styles.fieldLabel}>{label}</Text>
         {errors[keyName] && (
           <MaterialIcons name="error" size={16} color="#dc3545" />
@@ -158,11 +158,11 @@ const PersonalInfoScreen = ({ onBack }: PersonalInfoScreenProps) => {
           <View style={styles.photoSection}>
             <View style={styles.photoContainer}>
               <View style={styles.avatar}>
-                <MaterialIcons name="person" size={40} color="white" />
+                <MaterialIcons name="person" size={32} color="white" />
               </View>
               {isEditing && (
                 <TouchableOpacity style={styles.cameraButton}>
-                  <MaterialIcons name="camera-alt" size={20} color="white" />
+                  <MaterialIcons name="camera-alt" size={16} color="white" />
                 </TouchableOpacity>
               )}
             </View>
@@ -270,12 +270,12 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // Extra space for bottom navigation
   },
   header: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#1B7332',
     paddingHorizontal: 16,
     paddingTop: 44, // Safe area for status bar
-    paddingBottom: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingBottom: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   headerNav: {
     flexDirection: 'row',
@@ -309,13 +309,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#28a745',
-    borderRadius: 50,
+    width: 80,
+    height: 80,
+    backgroundColor: '#1B7332',
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: 'white',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -327,10 +327,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    backgroundColor: '#007bff',
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    backgroundColor: '#1B7332',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#28a745',
+    backgroundColor: '#1B7332',
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',

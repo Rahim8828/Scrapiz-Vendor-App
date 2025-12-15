@@ -51,13 +51,6 @@ const ProfileScreen = ({ onBack, onNavigate }: ProfileScreenProps) => {
           subtitle: "हिंदी, English", 
           action: "language",
           badge: null 
-        },
-        { 
-          icon: "privacy-tip", 
-          title: "Privacy Settings", 
-          subtitle: "Data, permissions", 
-          action: "privacy",
-          badge: null 
         }
       ]
     },
@@ -77,13 +70,6 @@ const ProfileScreen = ({ onBack, onNavigate }: ProfileScreenProps) => {
           title: "About", 
           subtitle: "Version, terms", 
           action: "about",
-          badge: null 
-        },
-        { 
-          icon: "more-horiz", 
-          title: "More Options", 
-          subtitle: "Additional settings", 
-          action: "more-menu",
           badge: null 
         }
       ]
@@ -130,9 +116,9 @@ const ProfileScreen = ({ onBack, onNavigate }: ProfileScreenProps) => {
             <View style={styles.profileCard}>
               <View style={styles.avatarSection}>
                 <View style={styles.modernAvatar}>
-                  <MaterialIcons name="person" size={28} color="white" />
+                  <MaterialIcons name="person" size={24} color="white" />
                   <TouchableOpacity style={styles.cameraButton}>
-                    <MaterialIcons name="camera-alt" size={14} color="#1B7332" />
+                    <MaterialIcons name="camera-alt" size={12} color="#1B7332" />
                   </TouchableOpacity>
                 </View>
 
@@ -220,13 +206,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120, // Extra space for bottom navigation
+    paddingBottom: 160, // Increased for proper scrolling clearance with bottom navigation
   },
   header: {
     backgroundColor: '#1B7332',
     paddingHorizontal: 20,
     paddingTop: 44, // Safe area for status bar
-    paddingBottom: 20,
+    paddingBottom: 12,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     shadowColor: '#1B7332',
@@ -246,7 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
     flex: 1,
@@ -369,9 +355,9 @@ const styles = StyleSheet.create({
   modernHeader: {
     backgroundColor: '#1B7332',
     paddingTop: 44,
-    paddingBottom: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingBottom: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     shadowColor: '#1B7332',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -385,7 +371,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   modernBackButton: {
     width: 36,
@@ -403,7 +389,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modernHeaderTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: 'white',
   },
@@ -419,32 +405,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 16,
-    gap: 16,
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
   },
   avatarSection: {
     alignItems: 'center',
   },
   modernAvatar: {
-    width: 64,
-    height: 64,
+    width: 52,
+    height: 52,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 32,
+    borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'white',
     position: 'relative',
   },
   cameraButton: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 24,
-    height: 24,
+    bottom: -1,
+    right: -1,
+    width: 20,
+    height: 20,
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -458,28 +444,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modernUserName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   modernUserPhone: {
-    fontSize: 14,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.8)',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   verificationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
     alignSelf: 'flex-start',
-    gap: 4,
+    gap: 3,
   },
   verifiedText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#1B7332',
     fontWeight: '600',
   },

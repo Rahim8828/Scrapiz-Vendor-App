@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1B7332',
     paddingHorizontal: 16,
     paddingTop: 44,
-    paddingBottom: 20,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: 'white',
     flex: 1,

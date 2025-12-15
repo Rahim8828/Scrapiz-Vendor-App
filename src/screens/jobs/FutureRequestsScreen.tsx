@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1B7332',
     paddingHorizontal: 16,
     paddingTop: 44,
-    paddingBottom: 20,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -529,10 +529,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   headerSubtitle: {
     fontSize: 12,

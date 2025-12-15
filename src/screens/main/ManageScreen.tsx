@@ -162,13 +162,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80, // Reduced for compact navigation
+    paddingBottom: 160, // Increased for proper scrolling clearance with bottom navigation
   },
   header: {
     backgroundColor: '#1B7332',
     paddingHorizontal: 16,
     paddingTop: 44,
-    paddingBottom: 20,
+    paddingBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -188,10 +188,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   headerSubtitle: {
     fontSize: 12,

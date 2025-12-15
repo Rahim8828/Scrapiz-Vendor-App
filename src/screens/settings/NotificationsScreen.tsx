@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#28a745',
     paddingHorizontal: 16,
     paddingTop: 44,
-    paddingBottom: 20,
+    paddingBottom: 12,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },

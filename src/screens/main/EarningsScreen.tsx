@@ -142,23 +142,7 @@ const EarningsScreen = ({ onBack }: EarningsScreenProps) => {
     setActiveTab(activeTab);
   };
 
-  const handleDownloadReport = useCallback(() => {
-    try {
-      const reportData = {
-        period: activeTab,
-        totalEarnings: currentData.totalEarnings,
-        totalJobs: currentData.totalJobs,
-        transactions: currentData.transactions,
-        generatedAt: new Date().toISOString()
-      };
-      
-      console.log('Generating report:', reportData);
-      Alert.alert('Report', 'Report generation started! You will be notified when ready.');
-    } catch (error) {
-      console.error('Report generation error:', error);
-      Alert.alert('Error', 'Failed to generate report. Please try again.');
-    }
-  }, [activeTab, currentData]);
+
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -312,13 +296,7 @@ const EarningsScreen = ({ onBack }: EarningsScreenProps) => {
               <Text style={styles.navTitle}>Earnings Dashboard</Text>
             </View>
             
-            <TouchableOpacity 
-              style={styles.navMenuButton}
-              onPress={handleDownloadReport}
-              disabled={isLoading || error !== null}
-            >
-              <MaterialIcons name="download" size={20} color="white" />
-            </TouchableOpacity>
+            <View style={styles.headerSpacer} />
           </View>
 
           {/* Compact Stats Row */}
@@ -492,7 +470,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80, // Reduced for compact navigation
+    paddingBottom: 160, // Increased for proper scrolling clearance with bottom navigation
   },
   header: {
     backgroundColor: '#1B7332',
@@ -1155,13 +1133,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: 'white',
   },
-  navMenuButton: {
-    width: 36,
-    height: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerSpacer: {
+    width: 40,
   },
   compactStatsRow: {
     flexDirection: 'row',
