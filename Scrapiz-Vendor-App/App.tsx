@@ -32,6 +32,7 @@ import {
   ActiveJob, 
   JobCompletion 
 } from './src/screens/jobs';
+import JobManagementScreen from './src/screens/jobs/JobManagementScreen';
 
 // Credit Screens
 import { CreditScreen } from './src/screens/credit';
@@ -47,6 +48,13 @@ const AppContent = () => {
   const [showJobCompletion, setShowJobCompletion] = useState(false);
   const [activeJob, setActiveJob] = useState<ActiveJobType | null>(null);
   const [isBookingAccepted, setIsBookingAccepted] = useState(false);
+  
+  // Job counts for navigation badges
+  const [jobCounts] = useState({
+    active: 2,
+    pending: 1,
+    upcoming: 3,
+  });
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     Alert.alert(
@@ -144,6 +152,8 @@ const AppContent = () => {
         />;
       case 'future-requests':
         return <FutureRequestsScreen onBack={handleBackToManage} />;
+      case 'ongoing':
+        return <JobManagementScreen onBack={handleBackToHome} onNavigate={handleNavigate} />;
 
       case 'booking-details':
         return selectedBooking ? (
@@ -270,6 +280,7 @@ const AppContent = () => {
         <BottomNavigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          jobCounts={jobCounts}
         />
       )}
     </View>

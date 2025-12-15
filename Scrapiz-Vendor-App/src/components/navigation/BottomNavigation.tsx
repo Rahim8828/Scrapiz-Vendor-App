@@ -5,13 +5,23 @@ import { MaterialIcons } from '@expo/vector-icons';
 interface BottomNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  jobCounts?: {
+    active: number;
+    pending: number;
+    upcoming: number;
+  };
 }
 
-const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => {
+const BottomNavigation = ({ activeTab, onTabChange, jobCounts }: BottomNavigationProps) => {
   const tabs = [
     { key: 'home', label: 'Home', icon: 'home' },
-    { key: 'manage', label: 'Manage', icon: 'work' },
-    { key: 'earnings', label: 'Earnings', icon: 'currency-rupee' },
+    { 
+      key: 'ongoing', 
+      label: 'Manage', 
+      icon: 'work',
+      badge: (jobCounts?.active || 0) + (jobCounts?.pending || 0)
+    },
+    { key: 'earnings', label: 'Target', icon: 'trending-up' },
     { key: 'profile', label: 'Profile', icon: 'person' }
   ];
 
@@ -30,19 +40,26 @@ const BottomNavigation = ({ activeTab, onTabChange }: BottomNavigationProps) => 
                 isActive && styles.activeTab
               ]}
             >
-              <MaterialIcons 
-                name={tab.icon as any} 
-                size={20} 
-                color={isActive ? '#28a745' : '#6c757d'} 
-                style={{ marginBottom: 4 }}
-              />
+              <View style={styles.iconContainer}>
+                <MaterialIcons 
+                  name={tab.icon as any} 
+                  size={22} 
+                  color={isActive ? '#1B7332' : '#6c757d'} 
+                />
+                {tab.badge && tab.badge > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {tab.badge > 99 ? '99+' : tab.badge}
+                    </Text>
+                  </View>
+                )}
+              </View>
               <Text style={[
                 styles.label,
                 isActive && styles.activeLabel
               ]}>
                 {tab.label}
               </Text>
-              {isActive && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -77,31 +94,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
     borderRadius: 12,
-    position: 'relative',
   },
   activeTab: {
-    backgroundColor: '#f0f9f0',
+    backgroundColor: 'rgba(27, 115, 50, 0.1)',
   },
-
+  iconContainer: {
+    position: 'relative',
+    marginBottom: 4,
+  },
+  badge: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#dc3545',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   label: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#6c757d',
+    textAlign: 'center',
   },
   activeLabel: {
-    color: '#28a745',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: '50%',
-    marginLeft: -16,
-    width: 32,
-    height: 3,
-    backgroundColor: '#28a745',
-    borderRadius: 2,
+    color: '#1B7332',
   },
 });
 
